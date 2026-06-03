@@ -1,0 +1,49 @@
+# Secrets and environment
+.env
+
+# Raw and generated data files
+data/raw/*.csv
+data/raw/synthetic/
+!data/raw/.gitkeep
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+env/
+ENV/
+*.egg-info/
+dist/
+build/
+*.so
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Operating system
+.DS_Store
+.DS_Store?
+._*
+Thumbs.db
+desktop.ini
+
+# IDEs and editors
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Testing and coverage
+.pytest_cache/
+htmlcov/
+.coverage
+coverage.xml
+
+# Docker and database
+postgres_data/
+
+# Logs
+*.log
+logs/
