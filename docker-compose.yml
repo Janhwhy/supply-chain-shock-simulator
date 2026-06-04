@@ -11,6 +11,7 @@ services:
     ports:
       - "5432:5432"
     volumes:
+      #so data inside the container doesnt disappear 
       - postgres_data:/var/lib/postgresql/data
 
 volumes:
