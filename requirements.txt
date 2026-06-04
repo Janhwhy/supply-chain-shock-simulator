@@ -12,3 +12,4 @@ matplotlib
 plotly
 pytest
 jupyter
+seaborn
