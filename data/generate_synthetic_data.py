@@ -25,6 +25,9 @@ DB_PASSWORD = os.getenv("DB_PASSWORD", "postgres")
 
 DATABASE_URL = f"postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
 
+NUM_SUPPLIERS = 100
+NUM_PRODUCTS = 500
+
 # ============================================================================
 # Calibrated Parameters from DataCo Analysis
 # ============================================================================
@@ -102,15 +105,18 @@ for i in range(2, 5):
         'rejection_rate': None
     })
 
-# 1.3. Remaining 46 suppliers distributed by country weights and tiers
-remaining_tiers = [1] * 14 + [2] * 32
+# 1.3. Remaining suppliers distributed by country weights and tiers
+remaining_count = NUM_SUPPLIERS - 4
+t1_count = int(np.round(remaining_count * (14 / 46)))
+t2_count = remaining_count - t1_count
+remaining_tiers = [1] * t1_count + [2] * t2_count
 np.random.shuffle(remaining_tiers)
 
 countries_pool = list(COUNTRY_SHARES.keys())
 countries_weights = list(COUNTRY_SHARES.values())
 countries_weights = np.array(countries_weights) / sum(countries_weights) # Normalize
 
-for i in range(5, 51):
+for i in range(5, NUM_SUPPLIERS + 1):
     country = np.random.choice(countries_pool, p=countries_weights)
     suppliers.append({
         'supplier_id': i,
@@ -131,7 +137,8 @@ df_suppliers = pd.DataFrame(suppliers)
 print("Generating products table...")
 products = []
 
-cat_counts = {
+# Scale counts to NUM_PRODUCTS dynamically
+base_counts = {
     'Cleats': 20,              # Fastener category (Critical)
     'Cardio Equipment': 15,    # Geo-cluster category (Coastal China dependent)
     'Camping & Hiking': 27,
@@ -141,6 +148,12 @@ cat_counts = {
     'Water Sports': 27,
     "Women's Apparel": 28
 }
+scale = NUM_PRODUCTS / 200.0
+cat_counts = {k: int(np.round(v * scale)) for k, v in base_counts.items()}
+diff = NUM_PRODUCTS - sum(cat_counts.values())
+if diff != 0:
+    largest_cat = max(cat_counts, key=cat_counts.get)
+    cat_counts[largest_cat] += diff
 
 product_id_counter = 1
 for cat, count in cat_counts.items():
