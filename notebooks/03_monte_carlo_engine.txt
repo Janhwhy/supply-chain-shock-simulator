@@ -1,0 +1,229 @@
+import time
+import numpy as np
+import pandas as pd
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
+import seaborn as sns
+from IPython.display import display
+from src.db import get_engine, read_table, write_dataframe, execute_statement, read_query
+from src.scenarios import get_all_scenarios, get_scenario_by_id, scenarios_to_dataframe
+from src.simulation import run_simulation, run_all_simulations, analyse_distribution, identify_worst_case_scenarios
+
+# Set aesthetic guidelines
+sns.set_theme(style="whitegrid")
+plt.rcParams['figure.figsize'] = (12, 6)
+plt.rcParams['font.size'] = 10
+plt.rcParams['axes.labelsize'] = 12
+plt.rcParams['axes.titlesize'] = 14
+
+
+print("Loading database tables...")
+df_suppliers = read_table('suppliers_enriched')
+df_products = read_table('products')
+df_relationships = read_table('supply_relationships')
+df_critical = read_table('critical_suppliers')
+
+print(f"Loaded {len(df_suppliers)} enriched suppliers.")
+print(f"Loaded {len(df_products)} products catalog items.")
+print(f"Loaded {len(df_relationships)} supplier-product relationships.")
+print(f"Loaded {len(df_critical)} critical supplier metrics.")
+
+
+df_scenarios = scenarios_to_dataframe()
+display(df_scenarios)
+
+
+# Find Rodriguez, Figueroa and Sanchez
+supplier_record = df_suppliers[df_suppliers['supplier_name'].str.contains("Rodriguez", na=False)].iloc[0]
+print(f"Deep-Dive Supplier: {supplier_record['supplier_name']} (ID: {supplier_record['supplier_id']})")
+print(f"Country: {supplier_record['country']} | Tier: {supplier_record['tier']} | Reliability Score: {supplier_record['reliability_score']}")
+
+
+scenarios = get_all_scenarios()
+results_dict = {}
+
+# Plot individual distributions with KDE and percentile markers
+fig, axes = plt.subplots(5, 1, figsize=(12, 22), sharex=True)
+
+for idx, scenario in enumerate(scenarios):
+    res = run_simulation(supplier_record, scenario, df_relationships, df_products, n_runs=10000)
+    results_dict[scenario.scenario_id] = res
+    dist = res['impact_distribution']
+    
+    # Plot histogram and KDE
+    sns.histplot(dist, kde=True, ax=axes[idx], color='teal', bins=50, stat='density', alpha=0.6)
+    
+    # Mark P50 and P95
+    axes[idx].axvline(res['p50_impact'], color='blue', linestyle='--', linewidth=1.5, label=f"P50: ₹{res['p50_impact']:,.2f}")
+    axes[idx].axvline(res['p95_impact'], color='red', linestyle='--', linewidth=1.5, label=f"P95: ₹{res['p95_impact']:,.2f}")
+    
+    axes[idx].set_title(f"{scenario.display_name} - Impact Distribution (Zero Impact Fraction: {res['zero_impact_fraction']:.1%})")
+    axes[idx].set_ylabel("Density")
+    axes[idx].legend()
+    
+    # Print distribution metrics
+    stats = analyse_distribution(dist, supplier_record['supplier_name'], scenario.display_name)
+    print(f"\n--- {scenario.display_name} Statistics ---")
+    for k, v in stats.items():
+        print(f"  {k}: {v:,.2f}" if isinstance(v, float) else f"  {k}: {v}")
+
+axes[-1].set_xlabel("Financial Impact (₹)")
+plt.tight_layout()
+plt.show()
+
+
+plt.figure(figsize=(14, 7))
+for scenario in scenarios:
+    dist = results_dict[scenario.scenario_id]['impact_distribution']
+    sns.kdeplot(dist, label=scenario.display_name, linewidth=2)
+plt.title(f"Comparative Impact Distributions for {supplier_record['supplier_name']}")
+plt.xlabel("Financial Impact (₹)")
+plt.ylabel("Density")
+plt.legend()
+plt.show()
+
+
+start_time = time.time()
+print("Starting full batch simulation...")
+df_sim_results = run_all_simulations(df_suppliers, scenarios, df_relationships, df_products, n_runs=10000)
+end_time = time.time()
+elapsed = end_time - start_time
+print(f"\nFull batch simulation completed in {elapsed:.2f} seconds.")
+
+
+print(f"DataFrame Shape: {df_sim_results.shape}")
+print("\nDataFrame Columns and Dtypes:")
+print(df_sim_results.dtypes)
+print("\nDescriptive Statistics:")
+display(df_sim_results.describe())
+
+
+# Merge simulation results with supplier registry for names and metadata
+df_plot_data = pd.merge(df_sim_results, df_suppliers[['supplier_id', 'supplier_name']], on='supplier_id')
+
+# Ensure supplier names are unique by appending their ID to avoid pivot suffix duplicate errors
+df_plot_data['supplier_display_name'] = df_plot_data['supplier_name'] + " (ID: " + df_plot_data['supplier_id'].astype(str) + ")"
+
+# Calculate total P95 exposure to sort the suppliers
+df_tot_exposure = df_plot_data.groupby('supplier_display_name')['p95_impact'].sum().reset_index()
+df_tot_exposure = df_tot_exposure.sort_values(by='p95_impact', ascending=False)
+sorted_suppliers = df_tot_exposure['supplier_display_name'].tolist()
+
+# Pivot the data
+pivot_df = df_plot_data.pivot(index='supplier_display_name', columns='scenario_id', values='p95_impact')
+pivot_df = pivot_df.reindex(sorted_suppliers)
+
+# Render the heatmap
+plt.figure(figsize=(12, 20))
+sns.heatmap(pivot_df, cmap="Reds", cbar_kws={'label': 'P95 Exposure (₹)'})
+plt.title("Heatmap of Supplier P95 Exposure Across Scenarios (Sorted by Total Exposure)")
+plt.xlabel("Disruption Scenario")
+plt.ylabel("Supplier Name")
+plt.tight_layout()
+plt.show()
+
+
+top_20 = df_tot_exposure.head(20)
+plt.figure(figsize=(12, 6))
+sns.barplot(data=top_20, x='p95_impact', y='supplier_display_name', palette='Reds_r')
+plt.title("Top 20 Suppliers by Aggregate P95 Exposure")
+plt.xlabel("Total P95 Exposure (₹)")
+plt.ylabel("Supplier Name")
+plt.show()
+
+
+top_10_names = df_tot_exposure.head(10)['supplier_display_name'].tolist()
+df_top_10 = df_plot_data[df_plot_data['supplier_display_name'].isin(top_10_names)]
+
+plt.figure(figsize=(14, 7))
+sns.barplot(data=df_top_10, x='supplier_display_name', y='p95_impact', hue='scenario_id', order=top_10_names, palette='viridis')
+plt.title("P95 Impact Comparison Across All Scenarios (Top 10 Suppliers)")
+plt.xlabel("Supplier Name")
+plt.ylabel("P95 Impact (₹)")
+plt.xticks(rotation=30, ha='right')
+plt.legend(title="Scenario ID")
+plt.tight_layout()
+plt.show()
+
+
+scenario_comp = df_sim_results.groupby('scenario_id').agg(
+    mean_p95=('p95_impact', 'mean'),
+    total_network_exposure=('p95_impact', 'sum'),
+    high_impact_count=('p95_impact', lambda x: (x > 100000).sum())
+).reset_index()
+
+display(scenario_comp)
+
+
+# Perform manual Min-Max scaling for the radar chart axis
+df_scaled = scenario_comp.copy()
+for col in ['mean_p95', 'total_network_exposure', 'high_impact_count']:
+    c_min = df_scaled[col].min()
+    c_max = df_scaled[col].max()
+    df_scaled[col + '_scaled'] = (df_scaled[col] - c_min) / (c_max - c_min) if c_max > c_min else 0.0
+
+categories = ['Mean P95 Impact', 'Total Network Exposure', 'High-Risk Count (>₹100k)']
+N = len(categories)
+angles = [n / float(N) * 2 * np.pi for n in range(N)]
+angles += angles[:1]
+
+fig, ax = plt.subplots(figsize=(8, 8), subplot_kw=dict(polar=True))
+plt.xticks(angles[:-1], categories, size=11)
+ax.set_rlabel_position(0)
+plt.yticks([0.2, 0.4, 0.6, 0.8, 1.0], ["0.2", "0.4", "0.6", "0.8", "1.0"], color="grey", size=8)
+plt.ylim(0, 1.1)
+
+colors = ['#1f77b4', '#2ca02c', '#d62728', '#9467bd', '#ff7f0e']
+for idx, row in df_scaled.iterrows():
+    values = [row['mean_p95_scaled'], row['total_network_exposure_scaled'], row['high_impact_count_scaled']]
+    values += values[:1]
+    ax.plot(angles, values, linewidth=2, linestyle='solid', label=row['scenario_id'], color=colors[idx % len(colors)])
+    ax.fill(angles, values, color=colors[idx % len(colors)], alpha=0.1)
+    
+plt.title("Disruption Scenario Comparison Profile (Normalized Metrics)", size=14, y=1.1)
+plt.legend(loc='upper right', bbox_to_anchor=(0.1, 0.1))
+plt.show()
+
+# Identify worst scenario
+max_exp_row = scenario_comp.loc[scenario_comp['total_network_exposure'].idxmax()]
+print(f"Worst Scenario: '{max_exp_row['scenario_id']}' producing total network risk of ₹{max_exp_row['total_network_exposure']:,.2f}.")
+
+
+df_worst_cases = identify_worst_case_scenarios(df_sim_results)
+df_worst_display = pd.merge(df_worst_cases, df_suppliers[['supplier_id', 'supplier_name', 'country', 'tier']], on='supplier_id')
+
+print("Worst Case Scenario per Supplier (Sample):")
+display(df_worst_display.head(15))
+
+
+top_10_worst = df_worst_display.sort_values(by='total_p95_exposure', ascending=False).head(10)
+print("\nTop 10 Most Fragile Suppliers and their Primary Risk Drivers:")
+display(top_10_worst[['supplier_name', 'country', 'tier', 'worst_case_scenario', 'max_p95_impact', 'total_p95_exposure']])
+
+
+# Map columns to match table schema
+df_db_output = df_sim_results[['supplier_id', 'scenario_id', 'p50_impact', 'p95_impact', 'n_runs']].copy()
+df_db_output.rename(columns={
+    'scenario_id': 'scenario_name',
+    'n_runs': 'run_count'
+}, inplace=True)
+
+# Clear old rows
+print("Clearing existing simulation results from PostgreSQL...")
+execute_statement("DELETE FROM simulation_results")
+
+# Write DataFrame
+print("Writing new simulation results back to PostgreSQL...")
+write_dataframe(df_db_output, 'simulation_results', if_exists='append')
+
+# Verify count
+row_count = read_query("SELECT COUNT(*) FROM simulation_results").iloc[0, 0]
+expected_count = len(df_suppliers) * len(scenarios)
+print(f"\nDatabase verification result:")
+print(f"  - Row count in database: {row_count} (Expected: {expected_count})")
+if row_count == expected_count:
+    print("  - Verification status: SUCCESS")
+else:
+    print("  - Verification status: FAILURE")
+
