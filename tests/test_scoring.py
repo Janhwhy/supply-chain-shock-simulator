@@ -272,3 +272,56 @@ def test_compute_substitutability_risk(sample_relationships):
     assert sub_risk[1] == 0.0
     assert sub_risk[2] == 1.0
     assert sub_risk[3] == 0.0
+
+
+def test_compute_priority_matrix(sample_suppliers, sample_suppliers_enriched, sample_relationships, sample_simulation_results):
+    """Test compute_priority_matrix classification and quadrants."""
+    from src.scoring import compute_priority_matrix
+    df_res = compute_resilience_scores(
+        sample_suppliers,
+        sample_suppliers_enriched,
+        sample_relationships,
+        sample_simulation_results
+    )
+    df_priority = compute_priority_matrix(df_res, sample_simulation_results)
+    
+    assert len(df_priority) == len(sample_suppliers)
+    expected_cols = {
+        'supplier_id', 'supplier_name', 'resilience_score', 'total_p95_exposure',
+        'probability_tier', 'impact_tier', 'priority_quadrant'
+    }
+    assert expected_cols.issubset(df_priority.columns)
+    
+    # Check that quadrants are populated and contain valid categories
+    valid_quadrants = {'Critical Priority', 'Monitor Closely', 'Contingency Plan', 'Routine Review'}
+    assert df_priority['priority_quadrant'].isin(valid_quadrants).all()
+
+
+def test_resilience_score_quartiles(sample_suppliers, sample_suppliers_enriched, sample_relationships, sample_simulation_results):
+    """Test that risk bands are assigned based on quartiles, distributing suppliers evenly."""
+    # Create 8 suppliers with distinct characteristics to yield 8 distinct resilience scores
+    suppliers_list = []
+    enriched_list = []
+    relationships_list = []
+    sim_list = []
+    for i in range(1, 9):
+        suppliers_list.append({"supplier_id": i, "supplier_name": f"Supplier {i}", "country": f"Country_{i}", "tier": 1})
+        # Vary avg_delay_days to create distinct reliability risks
+        enriched_list.append({"supplier_id": i, "avg_delay_days": float(i), "delay_volatility": float(i)})
+        # Single relationship per supplier
+        relationships_list.append({"supplier_id": i, "product_id": 10, "supply_share": 0.1, "is_sole_source": False})
+        sim_list.append({"supplier_id": i, "scenario_id": "scen", "p95_impact": 100.0})
+
+    df_sup = pd.DataFrame(suppliers_list)
+    df_sup_enr = pd.DataFrame(enriched_list)
+    df_rel = pd.DataFrame(relationships_list)
+    df_sim = pd.DataFrame(sim_list)
+
+    # Mock the internal read_table call if any occurs
+    df_res = compute_resilience_scores(df_sup, df_sup_enr, df_rel, df_sim)
+    
+    # Verify that risk bands have exactly 2 suppliers in each band (since 8 suppliers / 4 bands = 2 per band)
+    band_counts = df_res['risk_band'].value_counts()
+    for band in ['Critical', 'High', 'Medium', 'Low']:
+        assert band_counts.get(band, 0) == 2
+

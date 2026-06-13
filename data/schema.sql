@@ -116,3 +116,17 @@ CREATE TABLE mitigation_playbook (
 );
 
 COMMENT ON TABLE mitigation_playbook IS 'Stores optimal mitigation actions, estimated costs, residual impacts, and return on investment.';
+
+-- Table: risk_priority_matrix
+CREATE TABLE risk_priority_matrix (
+    supplier_id INTEGER PRIMARY KEY REFERENCES suppliers(supplier_id) ON DELETE CASCADE,
+    supplier_name VARCHAR(255) NOT NULL,
+    resilience_score NUMERIC(4,3) NOT NULL,
+    total_p95_exposure NUMERIC(15,2) NOT NULL,
+    probability_tier VARCHAR(50) NOT NULL,
+    impact_tier VARCHAR(50) NOT NULL,
+    priority_quadrant VARCHAR(50) NOT NULL,
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+COMMENT ON TABLE risk_priority_matrix IS 'Stores priority classifications based on vulnerability (probability of disruption) and simulated exposure (financial impact) as separate dimensions.';

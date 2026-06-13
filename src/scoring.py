@@ -233,12 +233,20 @@ def compute_resilience_scores(df_suppliers, df_suppliers_enriched, df_relationsh
     )
     df_result['resilience_score'] = 1.0 - df_result['composite_risk']
     
+    if df_result.empty:
+        df_result['risk_band'] = pd.Series(dtype=str)
+        return df_result
+        
+    q25 = df_result['resilience_score'].quantile(0.25)
+    q50 = df_result['resilience_score'].quantile(0.50)
+    q75 = df_result['resilience_score'].quantile(0.75)
+    
     def get_risk_band(score):
-        if score < 0.30:
+        if score <= q25:
             return 'Critical'
-        elif score <= 0.50:
+        elif score <= q50:
             return 'High'
-        elif score <= 0.70:
+        elif score <= q75:
             return 'Medium'
         else:
             return 'Low'
@@ -346,3 +354,85 @@ def sensitivity_analysis(df_suppliers, df_suppliers_enriched, df_relationships, 
         result[config_name] = df_scored['risk_band']
         
     return result
+
+
+def compute_priority_matrix(df_scores, df_simulation_results):
+    """
+    Computes priority matrix based on resilience score (probability) and simulated exposure (impact).
+    
+    Args:
+        df_scores (pd.DataFrame): Output from compute_resilience_scores.
+        df_simulation_results (pd.DataFrame): Simulation results table containing p95_impact.
+        
+    Returns:
+        pd.DataFrame: DataFrame containing supplier priority classification.
+    """
+    if df_scores.empty or df_simulation_results.empty:
+        return pd.DataFrame(columns=[
+            'supplier_id', 'supplier_name', 'resilience_score', 'total_p95_exposure',
+            'probability_tier', 'impact_tier', 'priority_quadrant'
+        ])
+        
+    # 1. Compute total P95 exposure per supplier
+    df_exposure = df_simulation_results.groupby('supplier_id')['p95_impact'].sum().reset_index()
+    df_exposure.rename(columns={'p95_impact': 'total_p95_exposure'}, inplace=True)
+    
+    # 2. Merge with scores
+    df_priority = pd.merge(
+        df_scores[['supplier_id', 'supplier_name', 'resilience_score']],
+        df_exposure,
+        on='supplier_id',
+        how='inner'
+    )
+    
+    # 3. Assign probability_tier (lower resilience = higher probability of disruption)
+    qp25 = df_priority['resilience_score'].quantile(0.25)
+    qp50 = df_priority['resilience_score'].quantile(0.50)
+    qp75 = df_priority['resilience_score'].quantile(0.75)
+    
+    def get_prob_tier(score):
+        if score <= qp25:
+            return 'High Probability'
+        elif score <= qp50:
+            return 'Medium-High'
+        elif score <= qp75:
+            return 'Medium-Low'
+        else:
+            return 'Low Probability'
+            
+    df_priority['probability_tier'] = df_priority['resilience_score'].apply(get_prob_tier)
+    
+    # 4. Assign impact_tier (higher exposure = higher impact)
+    qi25 = df_priority['total_p95_exposure'].quantile(0.25)
+    qi50 = df_priority['total_p95_exposure'].quantile(0.50)
+    qi75 = df_priority['total_p95_exposure'].quantile(0.75)
+    
+    def get_imp_tier(exp):
+        if exp > qi75:
+            return 'High Impact'
+        elif exp > qi50:
+            return 'Medium-High'
+        elif exp > qi25:
+            return 'Medium-Low'
+        else:
+            return 'Low Impact'
+            
+    df_priority['impact_tier'] = df_priority['total_p95_exposure'].apply(get_imp_tier)
+    
+    # 5. Determine priority_quadrant
+    def get_quadrant(row):
+        p_tier = row['probability_tier']
+        i_tier = row['impact_tier']
+        
+        if p_tier == 'High Probability' and i_tier == 'High Impact':
+            return 'Critical Priority'
+        elif p_tier == 'High Probability':
+            return 'Monitor Closely'
+        elif i_tier == 'High Impact':
+            return 'Contingency Plan'
+        else:
+            return 'Routine Review'
+            
+    df_priority['priority_quadrant'] = df_priority.apply(get_quadrant, axis=1)
+    
+    return df_priority
