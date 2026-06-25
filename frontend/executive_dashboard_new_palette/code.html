@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>ShockProof - Executive Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+  tailwind.config = {
+    darkMode: "class",
+    theme: {
+      extend: {
+        "colors": {
+                "inverse-surface": "#e0e2e9",
+                "on-primary-fixed-variant": "#004a78",
+                "on-tertiary": "#542100",
+                "on-background": "#e0e2e9",
+                "on-primary-fixed": "#001d34",
+                "surface-bright": "#36393e",
+                "on-primary": "#003355",
+                "primary": "#99cbff",
+                "on-secondary-fixed": "#410004",
+                "outline": "#8a919c",
+                "surface-container-low": "#181c20",
+                "on-surface-variant": "#c0c7d2",
+                "error-container": "#93000a",
+                "secondary-container": "#a00015",
+                "on-secondary": "#68000a",
+                "on-tertiary-container": "#4e1e00",
+                "tertiary-fixed": "#ffdbca",
+                "surface-container": "#1c2024",
+                "primary-container": "#4299e1",
+                "on-tertiary-fixed": "#331100",
+                "secondary": "#ffb3ad",
+                "secondary-fixed-dim": "#ffb3ad",
+                "primary-fixed": "#cfe5ff",
+                "surface-container-high": "#272a2f",
+                "on-secondary-container": "#ffa9a2",
+                "surface-dim": "#101418",
+                "surface-container-lowest": "#0b0f13",
+                "background": "#101418",
+                "on-surface": "#e0e2e9",
+                "on-error-container": "#ffdad6",
+                "secondary-fixed": "#ffdad7",
+                "error": "#ffb4ab",
+                "surface-container-highest": "#31353a",
+                "surface-variant": "#31353a",
+                "tertiary-container": "#e77328",
+                "on-primary-container": "#002f4e",
+                "on-error": "#690005",
+                "on-secondary-fixed-variant": "#930013",
+                "inverse-on-surface": "#2d3136",
+                "primary-fixed-dim": "#99cbff",
+                "tertiary": "#ffb68f",
+                "inverse-primary": "#00629d",
+                "on-tertiary-fixed-variant": "#773200",
+                "outline-variant": "#404751",
+                "tertiary-fixed-dim": "#ffb68f",
+                "surface-tint": "#99cbff",
+                "surface": "#101418"
+        },
+        "borderRadius": {
+                "DEFAULT": "0.125rem",
+                "lg": "0.25rem",
+                "xl": "0.5rem",
+                "full": "0.75rem"
+        },
+        "spacing": {
+                "sm": "16px",
+                "md": "24px",
+                "xs": "8px",
+                "margin-safe": "32px",
+                "gutter": "24px",
+                "xl": "64px",
+                "lg": "40px",
+                "base": "4px"
+        },
+        "fontFamily": {
+                "body-lg": [
+                        "Inter"
+                ],
+                "title-md": [
+                        "Inter"
+                ],
+                "label-caps": [
+                        "Inter"
+                ],
+                "headline-lg-mobile": [
+                        "Inter"
+                ],
+                "data-mono": [
+                        "JetBrains Mono"
+                ],
+                "headline-lg": [
+                        "Inter"
+                ],
+                "display-lg": [
+                        "Inter"
+                ],
+                "body-sm": [
+                        "Inter"
+                ]
+        },
+        "fontSize": {
+                "body-lg": [
+                        "16px",
+                        {
+                                "lineHeight": "24px",
+                                "fontWeight": "400"
+                        }
+                ],
+                "title-md": [
+                        "20px",
+                        {
+                                "lineHeight": "28px",
+                                "fontWeight": "600"
+                        }
+                ],
+                "label-caps": [
+                        "12px",
+                        {
+                                "lineHeight": "16px",
+                                "letterSpacing": "0.05em",
+                                "fontWeight": "700"
+                        }
+                ],
+                "headline-lg-mobile": [
+                        "24px",
+                        {
+                                "lineHeight": "32px",
+                                "fontWeight": "600"
+                        }
+                ],
+                "data-mono": [
+                        "13px",
+                        {
+                                "lineHeight": "18px",
+                                "fontWeight": "500"
+                        }
+                ],
+                "headline-lg": [
+                        "32px",
+                        {
+                                "lineHeight": "40px",
+                                "letterSpacing": "-0.01em",
+                                "fontWeight": "600"
+                        }
+                ],
+                "display-lg": [
+                        "48px",
+                        {
+                                "lineHeight": "56px",
+                                "letterSpacing": "-0.02em",
+                                "fontWeight": "700"
+                        }
+                ],
+                "body-sm": [
+                        "14px",
+                        {
+                                "lineHeight": "20px",
+                                "fontWeight": "400"
+                        }
+                ]
+        }
+},
+    },
+  }
+</script>
+</head>
+<body class="bg-background text-on-surface font-body-lg flex h-screen overflow-hidden">
+<nav class="bg-surface-container dark:bg-surface-container border-r border-outline-variant dark:border-outline-variant flex flex-col h-full py-md px-sm w-64 flex-shrink-0 z-40 hidden lg:flex">
+<div class="mb-xl px-xs">
+<div class="flex items-center gap-xs">
+<span class="material-symbols-outlined text-[#464c89] dark:text-[#464c89] text-[32px]">shield</span>
+<h1 class="font-title-md text-title-md font-bold text-on-surface">ShockProof</h1>
+</div>
+<p class="font-label-caps text-label-caps text-on-surface-variant mt-base">Supply Chain Risk Analytics</p>
+</div>
+<div class="flex-1 flex flex-col gap-base">
+<a class="flex items-center gap-sm px-sm py-xs bg-secondary-container text-on-secondary-container rounded-lg font-bold scale-95 active:scale-90 transition-all" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+<span class="font-label-caps text-label-caps">Overview</span>
+</a>
+<a class="flex items-center gap-sm px-sm py-xs text-on-surface-variant hover:bg-surface-container-high rounded-lg hover:bg-surface-container-highest transition-all scale-95 active:scale-90" href="#">
+<span class="material-symbols-outlined">hub</span>
+<span class="font-label-caps text-label-caps">Network Graph</span>
+</a>
+<a class="flex items-center gap-sm px-sm py-xs text-on-surface-variant hover:bg-surface-container-high rounded-lg hover:bg-surface-container-highest transition-all scale-95 active:scale-90" href="#">
+<span class="material-symbols-outlined">security</span>
+<span class="font-label-caps text-label-caps">Supplier Risk</span>
+</a>
+<a class="flex items-center gap-sm px-sm py-xs text-on-surface-variant hover:bg-surface-container-high rounded-lg hover:bg-surface-container-highest transition-all scale-95 active:scale-90" href="#">
+<span class="material-symbols-outlined">local_shipping</span>
+<span class="font-label-caps text-label-caps">Logistics</span>
+</a>
+<a class="flex items-center gap-sm px-sm py-xs text-on-surface-variant hover:bg-surface-container-high rounded-lg hover:bg-surface-container-highest transition-all scale-95 active:scale-90" href="#">
+<span class="material-symbols-outlined">assessment</span>
+<span class="font-label-caps text-label-caps">Reports</span>
+</a>
+</div>
+<div class="flex flex-col gap-base border-t border-outline-variant pt-sm mt-auto">
+<a class="flex items-center gap-sm px-sm py-xs text-on-surface-variant hover:bg-surface-container-high rounded-lg hover:bg-surface-container-highest transition-all scale-95 active:scale-90" href="#">
+<span class="material-symbols-outlined">help</span>
+<span class="font-label-caps text-label-caps">Help Center</span>
+</a>
+<a class="flex items-center gap-sm px-sm py-xs text-on-surface-variant hover:bg-surface-container-high rounded-lg hover:bg-surface-container-highest transition-all scale-95 active:scale-90" href="#">
+<span class="material-symbols-outlined">logout</span>
+<span class="font-label-caps text-label-caps">Logout</span>
+</a>
+</div>
+</nav>
+<div class="flex-1 flex flex-col h-full overflow-hidden">
+<header class="bg-surface dark:bg-surface border-b border-outline-variant dark:border-outline-variant sticky top-0 w-full z-30 flex justify-between items-center px-md py-sm">
+<div class="flex items-center gap-md">
+<div class="lg:hidden flex items-center gap-xs">
+<span class="material-symbols-outlined text-[#464c89] text-[24px]">shield</span>
+</div>
+<nav class="hidden md:flex gap-md">
+<a class="text-[#464c89] dark:text-[#464c89] border-b-2 border-[#464c89] pb-1 font-body-lg text-body-lg font-bold cursor-pointer active:opacity-80" href="#">Dashboard</a>
+<a class="text-on-surface-variant dark:text-on-surface-variant hover:text-[#464c89] transition-colors duration-200 font-body-lg text-body-lg cursor-pointer active:opacity-80" href="#">Risk Map</a>
+<a class="text-on-surface-variant dark:text-on-surface-variant hover:text-[#464c89] transition-colors duration-200 font-body-lg text-body-lg cursor-pointer active:opacity-80" href="#">Inventory</a>
+<a class="text-on-surface-variant dark:text-on-surface-variant hover:text-[#464c89] transition-colors duration-200 font-body-lg text-body-lg cursor-pointer active:opacity-80" href="#">Analytics</a>
+</nav>
+</div>
+<div class="flex items-center gap-md">
+<span class="font-data-mono text-data-mono text-outline hidden md:block">Oct 24, 2023, 09:15 AM</span>
+<div class="flex gap-sm">
+<button class="text-on-surface-variant hover:text-[#464c89] transition-colors duration-200 cursor-pointer active:opacity-80 flex items-center justify-center w-8 h-8 rounded-full hover:bg-surface-container-high"><span class="material-symbols-outlined">notifications</span></button>
+<button class="text-on-surface-variant hover:text-[#464c89] transition-colors duration-200 cursor-pointer active:opacity-80 flex items-center justify-center w-8 h-8 rounded-full hover:bg-surface-container-high"><span class="material-symbols-outlined">settings</span></button>
+</div>
+<div class="w-8 h-8 rounded-full bg-surface-container-high border border-outline-variant overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="A detailed, hyper-realistic macro shot of an abstract glowing optical fiber core, illuminated in intense neon cyan against a stark black void, representing precision data and executive intelligence." src="https://lh3.googleusercontent.com/aida-public/AB6AXuD5gKPxHFIhhFU9kXQqOEdI8KQW09g97FGkDH-ZQzSOuAzkmimzj729TCc2FELbw13FaHWjfidjSb0lOyxG3jBYEcj4J-6AW8GNS8qGBUboDMT3_UtCfjed3fSKF7n0bg_MxznE3NP7gXrxToZF76_TH7851_ENWHdg3bPGapJIjQHUvGdn5t5ER4UvWXA_PcGQ4svNrWOtEThypml-29mgasw7_R-C4kDMmUQSd9AeIiHloTugLnEccyEgtcLCdQ2yDn40pfYLghFm"/>
+</div>
+</div>
+</header>
+<main class="flex-1 overflow-y-auto p-sm md:p-lg">
+<div class="max-w-[1600px] mx-auto">
+<div class="mb-lg">
+<h2 class="font-headline-lg text-headline-lg text-on-surface hidden md:block">Executive Summary</h2>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-gutter mb-lg">
+<div class="bg-surface-container border border-outline-variant p-md rounded-lg flex flex-col gap-xs">
+<span class="font-title-md text-title-md text-on-surface-variant">Total Network P95 Exposure</span>
+<div class="flex items-baseline gap-sm mt-auto">
+<span class="font-display-lg text-display-lg text-[#ff6b59]">₹26.3 Cr</span>
+<span class="font-data-mono text-data-mono text-[#ff6b59] flex items-center"><span class="material-symbols-outlined text-[16px]">arrow_upward</span> 12%</span>
+</div>
+</div>
+<div class="bg-surface-container border border-outline-variant p-md rounded-lg flex flex-col gap-xs">
+<span class="font-title-md text-title-md text-on-surface-variant">Critical Priority Suppliers</span>
+<div class="flex items-center gap-sm mt-auto">
+<span class="font-display-lg text-display-lg text-on-surface">5</span>
+<span class="bg-[#ff6b59]/20 text-[#ff6b59] px-xs py-base rounded-full font-label-caps text-label-caps border border-[#ff6b59]/30 shadow-[0_0_8px_rgba(255,107,89,0.2)]">CRITICAL</span>
+</div>
+</div>
+<div class="bg-surface-container border border-outline-variant p-md rounded-lg flex flex-col gap-xs">
+<span class="font-title-md text-title-md text-on-surface-variant">Mitigation Budget</span>
+<div class="flex items-baseline gap-sm mt-auto">
+<span class="font-display-lg text-display-lg text-[#ffa600]">₹1.44 Cr</span>
+<span class="font-data-mono text-data-mono text-outline">Allocated</span>
+</div>
+</div>
+<div class="bg-surface-container border border-outline-variant p-md rounded-lg flex flex-col gap-xs">
+<span class="font-title-md text-title-md text-on-surface-variant">Portfolio ROI</span>
+<div class="flex items-baseline gap-sm mt-auto">
+<span class="font-display-lg text-display-lg text-[#464c89]">0.08×</span>
+<span class="font-data-mono text-data-mono text-[#464c89] flex items-center"><span class="material-symbols-outlined text-[16px]">arrow_upward</span> 0.02</span>
+</div>
+</div>
+</div>
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-gutter">
+<div class="lg:col-span-7 bg-surface-container border border-outline-variant rounded-lg p-md flex flex-col">
+<div class="flex justify-between items-center mb-md">
+<h3 class="font-title-md text-title-md text-on-surface">Supplier Risk Register</h3>
+<button class="text-[#464c89] hover:text-[#003d5c] font-label-caps text-label-caps uppercase tracking-wider transition-colors">View All</button>
+</div>
+<div class="overflow-x-auto">
+<table class="w-full text-left border-collapse min-w-[600px]">
+<thead>
+<tr class="border-b border-outline-variant pb-xs">
+<th class="font-label-caps text-label-caps text-on-surface-variant py-sm pr-sm">Supplier Name</th>
+<th class="font-label-caps text-label-caps text-on-surface-variant py-sm px-sm">Country</th>
+<th class="font-label-caps text-label-caps text-on-surface-variant py-sm px-sm">Tier</th>
+<th class="font-label-caps text-label-caps text-on-surface-variant py-sm px-sm w-32">Resilience</th>
+<th class="font-label-caps text-label-caps text-on-surface-variant py-sm px-sm">Exposure</th>
+</tr>
+</thead>
+<tbody>
+<tr class="border-b border-outline-variant border-opacity-50 hover:bg-surface-container-high transition-colors cursor-pointer">
+<td class="py-sm pr-sm font-body-sm text-body-sm text-on-surface font-medium">Apex Manufacturing Corp</td>
+<td class="py-sm px-sm font-body-sm text-body-sm text-on-surface-variant flex items-center gap-xs"><span class="w-4 h-3 bg-[#ff6b59] rounded-sm inline-block"></span> TW</td>
+<td class="py-sm px-sm font-body-sm text-body-sm text-on-surface-variant">1</td>
+<td class="py-sm px-sm">
+<div class="w-full bg-surface h-1.5 rounded-full overflow-hidden">
+<div class="bg-[#ff6b59] h-full" style="width: 25%;"></div>
+</div>
+</td>
+<td class="py-sm px-sm font-data-mono text-data-mono text-[#ff6b59]">₹8.4 Cr</td>
+</tr>
+<tr class="border-b border-outline-variant border-opacity-50 hover:bg-surface-container-high transition-colors cursor-pointer">
+<td class="py-sm pr-sm font-body-sm text-body-sm text-on-surface font-medium">Global Tech Systems</td>
+<td class="py-sm px-sm font-body-sm text-body-sm text-on-surface-variant flex items-center gap-xs"><span class="w-4 h-3 bg-[#003d5c] rounded-sm inline-block"></span> US</td>
+<td class="py-sm px-sm font-body-sm text-body-sm text-on-surface-variant">2</td>
+<td class="py-sm px-sm">
+<div class="w-full bg-surface h-1.5 rounded-full overflow-hidden">
+<div class="bg-[#ffa600] h-full" style="width: 45%;"></div>
+</div>
+</td>
+<td class="py-sm px-sm font-data-mono text-data-mono text-[#ffa600]">₹4.1 Cr</td>
+</tr>
+<tr class="border-b border-outline-variant border-opacity-50 hover:bg-surface-container-high transition-colors cursor-pointer">
+<td class="py-sm pr-sm font-body-sm text-body-sm text-on-surface font-medium">Nexus Logistics</td>
+<td class="py-sm px-sm font-body-sm text-body-sm text-on-surface-variant flex items-center gap-xs"><span class="w-4 h-3 bg-[#ffa600] rounded-sm inline-block"></span> SG</td>
+<td class="py-sm px-sm font-body-sm text-body-sm text-on-surface-variant">1</td>
+<td class="py-sm px-sm">
+<div class="w-full bg-surface h-1.5 rounded-full overflow-hidden">
+<div class="bg-[#ff6b59] h-full" style="width: 30%;"></div>
+</div>
+</td>
+<td class="py-sm px-sm font-data-mono text-data-mono text-[#ff6b59]">₹6.2 Cr</td>
+</tr>
+<tr class="border-b border-outline-variant border-opacity-50 hover:bg-surface-container-high transition-colors cursor-pointer">
+<td class="py-sm pr-sm font-body-sm text-body-sm text-on-surface font-medium">Quantum Components</td>
+<td class="py-sm px-sm font-body-sm text-body-sm text-on-surface-variant flex items-center gap-xs"><span class="w-4 h-3 bg-outline rounded-sm inline-block"></span> DE</td>
+<td class="py-sm px-sm font-body-sm text-body-sm text-on-surface-variant">3</td>
+<td class="py-sm px-sm">
+<div class="w-full bg-surface h-1.5 rounded-full overflow-hidden">
+<div class="bg-[#464c89] h-full" style="width: 85%;"></div>
+</div>
+</td>
+<td class="py-sm px-sm font-data-mono text-data-mono text-on-surface-variant">₹0.8 Cr</td>
+</tr>
+<tr class="hover:bg-surface-container-high transition-colors cursor-pointer">
+<td class="py-sm pr-sm font-body-sm text-body-sm text-on-surface font-medium">Orion Metals</td>
+<td class="py-sm px-sm font-body-sm text-body-sm text-on-surface-variant flex items-center gap-xs"><span class="w-4 h-3 bg-[#464c89] rounded-sm inline-block"></span> BR</td>
+<td class="py-sm px-sm font-body-sm text-body-sm text-on-surface-variant">2</td>
+<td class="py-sm px-sm">
+<div class="w-full bg-surface h-1.5 rounded-full overflow-hidden">
+<div class="bg-[#ffa600] h-full" style="width: 55%;"></div>
+</div>
+</td>
+<td class="py-sm px-sm font-data-mono text-data-mono text-[#ffa600]">₹2.5 Cr</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="lg:col-span-5 bg-surface-container border border-outline-variant rounded-lg p-md flex flex-col">
+<div class="flex justify-between items-center mb-md">
+<h3 class="font-title-md text-title-md text-on-surface">Risk Priority Matrix</h3>
+<span class="material-symbols-outlined text-outline-variant">more_horiz</span>
+</div>
+<div class="flex-1 min-h-[300px] relative border-l border-b border-outline-variant mt-sm">
+<div class="absolute inset-0 grid grid-cols-2 grid-rows-2">
+<div class="border-b border-r border-outline-variant border-opacity-20 bg-[#464c89]/5 relative group">
+<span class="absolute top-sm left-sm font-label-caps text-label-caps text-[#464c89] opacity-70 group-hover:opacity-100 transition-opacity">Monitor Closely</span>
+</div>
+<div class="border-b border-outline-variant border-opacity-20 bg-[#ff6b59]/10 relative group">
+<span class="absolute top-sm right-sm font-label-caps text-label-caps text-[#ff6b59] opacity-70 group-hover:opacity-100 transition-opacity text-right">Critical Priority</span>
+</div>
+<div class="border-r border-outline-variant border-opacity-20 bg-[#003d5c]/5 relative group">
+<span class="absolute bottom-sm left-sm font-label-caps text-label-caps text-[#003d5c] opacity-70 group-hover:opacity-100 transition-opacity">Routine Review</span>
+</div>
+<div class="bg-[#ffa600]/5 relative group">
+<span class="absolute bottom-sm right-sm font-label-caps text-label-caps text-[#ffa600] opacity-70 group-hover:opacity-100 transition-opacity text-right">Contingency</span>
+</div>
+</div>
+<div class="absolute w-6 h-6 bg-[#ff6b59] rounded-full border border-surface shadow-[0_0_12px_rgba(255,107,89,0.4)] cursor-pointer hover:scale-110 transition-transform" style="top: 15%; right: 20%;" title="Apex Manufacturing Corp"></div>
+<div class="absolute w-4 h-4 bg-[#ff6b59] rounded-full border border-surface shadow-[0_0_8px_rgba(255,107,89,0.4)] cursor-pointer hover:scale-110 transition-transform" style="top: 25%; right: 35%;" title="Nexus Logistics"></div>
+<div class="absolute w-5 h-5 bg-[#ffa600] rounded-full border border-surface cursor-pointer hover:scale-110 transition-transform" style="top: 40%; right: 60%;" title="Global Tech Systems"></div>
+<div class="absolute w-3 h-3 bg-[#ffa600] rounded-full border border-surface cursor-pointer hover:scale-110 transition-transform" style="bottom: 30%; right: 15%;" title="Orion Metals"></div>
+<div class="absolute w-2 h-2 bg-[#464c89] rounded-full border border-surface cursor-pointer hover:scale-110 transition-transform" style="bottom: 15%; left: 20%;" title="Quantum Components"></div>
+<div class="absolute w-3 h-3 bg-[#464c89] rounded-full border border-surface cursor-pointer hover:scale-110 transition-transform" style="bottom: 45%; left: 35%;"></div>
+<div class="absolute w-2 h-2 bg-[#003d5c] rounded-full border border-surface cursor-pointer hover:scale-110 transition-transform" style="top: 35%; left: 15%;"></div>
+<span class="absolute -bottom-xl left-1/2 -translate-x-1/2 font-label-caps text-label-caps text-outline">Total P95 Exposure (₹) →</span>
+<span class="absolute top-1/2 -left-xl -translate-y-1/2 -rotate-90 font-label-caps text-label-caps text-outline whitespace-nowrap">Resilience Score →</span>
+</div>
+</div>
+</div>
+</div>
+</main>
+</div>
+</body></html>

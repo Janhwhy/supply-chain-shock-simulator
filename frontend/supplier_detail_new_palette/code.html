@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Supplier Detail View - ShockProof</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+  tailwind.config = {
+    darkMode: "class",
+    theme: {
+      extend: {
+        "colors": {
+                "inverse-surface": "#e0e2e9",
+                "on-primary-fixed-variant": "#004a78",
+                "on-tertiary": "#542100",
+                "on-background": "#e0e2e9",
+                "on-primary-fixed": "#001d34",
+                "surface-bright": "#36393e",
+                "on-primary": "#003355",
+                "primary": "#99cbff",
+                "on-secondary-fixed": "#410004",
+                "outline": "#8a919c",
+                "surface-container-low": "#181c20",
+                "on-surface-variant": "#c0c7d2",
+                "error-container": "#93000a",
+                "secondary-container": "#a00015",
+                "on-secondary": "#68000a",
+                "on-tertiary-container": "#4e1e00",
+                "tertiary-fixed": "#ffdbca",
+                "surface-container": "#1c2024",
+                "primary-container": "#4299e1",
+                "on-tertiary-fixed": "#331100",
+                "secondary": "#ffb3ad",
+                "secondary-fixed-dim": "#ffb3ad",
+                "primary-fixed": "#cfe5ff",
+                "surface-container-high": "#272a2f",
+                "on-secondary-container": "#ffa9a2",
+                "surface-dim": "#101418",
+                "surface-container-lowest": "#0b0f13",
+                "background": "#101418",
+                "on-surface": "#e0e2e9",
+                "on-error-container": "#ffdad6",
+                "secondary-fixed": "#ffdad7",
+                "error": "#ffb4ab",
+                "surface-container-highest": "#31353a",
+                "surface-variant": "#31353a",
+                "tertiary-container": "#e77328",
+                "on-primary-container": "#002f4e",
+                "on-error": "#690005",
+                "on-secondary-fixed-variant": "#930013",
+                "inverse-on-surface": "#2d3136",
+                "primary-fixed-dim": "#99cbff",
+                "tertiary": "#ffb68f",
+                "inverse-primary": "#00629d",
+                "on-tertiary-fixed-variant": "#773200",
+                "outline-variant": "#404751",
+                "tertiary-fixed-dim": "#ffb68f",
+                "surface-tint": "#99cbff",
+                "surface": "#101418"
+        },
+        "borderRadius": {
+                "DEFAULT": "0.125rem",
+                "lg": "0.25rem",
+                "xl": "0.5rem",
+                "full": "0.75rem"
+        },
+        "spacing": {
+                "sm": "16px",
+                "md": "24px",
+                "xs": "8px",
+                "margin-safe": "32px",
+                "gutter": "24px",
+                "xl": "64px",
+                "lg": "40px",
+                "base": "4px"
+        },
+        "fontFamily": {
+                "body-lg": [
+                        "Inter"
+                ],
+                "title-md": [
+                        "Inter"
+                ],
+                "label-caps": [
+                        "Inter"
+                ],
+                "headline-lg-mobile": [
+                        "Inter"
+                ],
+                "data-mono": [
+                        "JetBrains Mono"
+                ],
+                "headline-lg": [
+                        "Inter"
+                ],
+                "display-lg": [
+                        "Inter"
+                ],
+                "body-sm": [
+                        "Inter"
+                ]
+        },
+        "fontSize": {
+                "body-lg": [
+                        "16px",
+                        {
+                                "lineHeight": "24px",
+                                "fontWeight": "400"
+                        }
+                ],
+                "title-md": [
+                        "20px",
+                        {
+                                "lineHeight": "28px",
+                                "fontWeight": "600"
+                        }
+                ],
+                "label-caps": [
+                        "12px",
+                        {
+                                "lineHeight": "16px",
+                                "letterSpacing": "0.05em",
+                                "fontWeight": "700"
+                        }
+                ],
+                "headline-lg-mobile": [
+                        "24px",
+                        {
+                                "lineHeight": "32px",
+                                "fontWeight": "600"
+                        }
+                ],
+                "data-mono": [
+                        "13px",
+                        {
+                                "lineHeight": "18px",
+                                "fontWeight": "500"
+                        }
+                ],
+                "headline-lg": [
+                        "32px",
+                        {
+                                "lineHeight": "40px",
+                                "letterSpacing": "-0.01em",
+                                "fontWeight": "600"
+                        }
+                ],
+                "display-lg": [
+                        "48px",
+                        {
+                                "lineHeight": "56px",
+                                "letterSpacing": "-0.02em",
+                                "fontWeight": "700"
+                        }
+                ],
+                "body-sm": [
+                        "14px",
+                        {
+                                "lineHeight": "20px",
+                                "fontWeight": "400"
+                        }
+                ]
+        }
+},
+    },
+  }
+</script>
+<style>
+        .glass-panel {
+            background: rgba(28, 32, 36, 0.6);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+        }
+        .outer-glow-red {
+            box-shadow: 0 0 12px rgba(255, 107, 89, 0.2);
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background min-h-screen font-body-lg">
+<!-- Top Navigation (Shell suppressed due to Task-Focused/Details intent, but keeping a simplified header for context) -->
+<header class="flex justify-between items-center px-md py-xs w-full max-w-full border-b border-outline-variant bg-surface sticky top-0 z-50">
+<div class="flex items-center gap-xs">
+<button class="text-on-surface-variant hover:text-[#954e9b] transition-colors p-xs" onclick="history.back()">
+<span class="material-symbols-outlined">arrow_back</span>
+</button>
+<span class="font-headline-lg font-bold text-[#954e9b]">ShockProof</span>
+</div>
+<div class="flex items-center gap-sm">
+<span class="material-symbols-outlined text-on-surface-variant hover:text-[#954e9b] cursor-pointer">settings</span>
+<div class="w-8 h-8 rounded-full overflow-hidden bg-surface-container-high border border-outline-variant">
+<img class="w-full h-full object-cover" data-alt="A futuristic, sleek AI interface avatar, glowing blue geometric lines forming a stylized human head profile against a deep dark background. The aesthetic is extremely high-end corporate analytics, emphasizing precision and predictive intelligence." src="https://lh3.googleusercontent.com/aida-public/AB6AXuB5CujXsQ5Dc2G-MrbF93BVwN5FOED3QzZDlsQs3ldEOVt5GOiyFpTmVjtMhbloHdvP6e0jLYpgy7lrBYhy9QPmxQErPmYQkpirQQeWTraraLPSDXjN44QoKndD6jTwu9O3tveSohqP0VSb6GjTK_4--TheuzfoDUpQBt-ImFJCfT5x_RgnHFxDKPaJ0Ya5qbE2XvtYQkVokzXnPSHCTXOJ9303VJ3FlvqW0M5AaFu3dskh1YoR0cLYaayLnhuQlou5lgTXUTk_cAfk"/>
+</div>
+</div>
+</header>
+<main class="max-w-[1440px] mx-auto px-margin-safe md:px-lg py-md md:py-lg grid grid-cols-1 md:grid-cols-12 gap-gutter">
+<!-- Supplier Header Area (Spans full width) -->
+<div class="col-span-1 md:col-span-12 flex flex-col md:flex-row justify-between items-start md:items-end gap-md pb-md border-b border-outline-variant">
+<div class="space-y-sm">
+<div class="flex items-center gap-sm flex-wrap">
+<span class="font-display-lg text-on-surface">Global Logistics Corp</span>
+<div class="flex gap-xs items-center">
+<span class="font-title-md">🇺🇸</span>
+<span class="font-body-sm text-on-surface-variant">USA</span>
+</div>
+</div>
+<div class="flex gap-xs flex-wrap">
+<span class="px-xs py-[2px] rounded border border-outline-variant bg-surface-container text-on-surface font-label-caps inline-flex items-center">
+                        Tier 1 Supplier
+                    </span>
+<span class="px-xs py-[2px] rounded border border-[#ff6b59] bg-[#ff6b59]/10 text-[#ff6b59] font-label-caps inline-flex items-center outer-glow-red">
+<span class="material-symbols-outlined text-[14px] mr-[2px]" style="font-variation-settings: 'FILL' 1;">warning</span>
+                        Critical Priority
+                    </span>
+</div>
+</div>
+<div class="flex gap-sm">
+<button class="px-md py-xs rounded border border-[#003d5c] text-[#003d5c] font-title-md hover:bg-[#003d5c] hover:text-white transition-colors">
+                    Export Report
+                </button>
+<button class="px-md py-xs rounded bg-[#464c89] text-white font-title-md hover:bg-[#464c89]/80 transition-colors">
+                    Contact Lead
+                </button>
+</div>
+</div>
+<!-- Factor Score Row (Spans full width, 4 columns inside) -->
+<div class="col-span-1 md:col-span-12 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-gutter mt-md">
+<!-- Gauge 1: Dependency -->
+<div class="bg-surface-container p-md rounded-lg border border-outline-variant flex flex-col items-center justify-center relative glass-panel">
+<span class="font-label-caps text-on-surface-variant absolute top-sm left-sm">Dependency Risk</span>
+<div class="w-24 h-24 mt-xl relative flex items-center justify-center">
+<svg class="w-full h-full transform -rotate-90" viewbox="0 0 36 36">
+<path class="text-surface-container-highest" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="currentColor" stroke-width="3"></path>
+<path class="text-[#ff6b59]" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="currentColor" stroke-dasharray="85, 100" stroke-width="3"></path>
+</svg>
+<span class="absolute font-headline-lg text-[#ff6b59]">85</span>
+</div>
+<span class="font-data-mono text-[#ff6b59] mt-sm">Critical</span>
+</div>
+<!-- Gauge 2: Geographic -->
+<div class="bg-surface-container p-md rounded-lg border border-outline-variant flex flex-col items-center justify-center relative glass-panel">
+<span class="font-label-caps text-on-surface-variant absolute top-sm left-sm">Geographic Risk</span>
+<div class="w-24 h-24 mt-xl relative flex items-center justify-center">
+<svg class="w-full h-full transform -rotate-90" viewbox="0 0 36 36">
+<path class="text-surface-container-highest" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="currentColor" stroke-width="3"></path>
+<path class="text-[#ffa600]" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="currentColor" stroke-dasharray="68, 100" stroke-width="3"></path>
+</svg>
+<span class="absolute font-headline-lg text-[#ffa600]">68</span>
+</div>
+<span class="font-data-mono text-[#ffa600] mt-sm">Elevated</span>
+</div>
+<!-- Gauge 3: Reliability -->
+<div class="bg-surface-container p-md rounded-lg border border-outline-variant flex flex-col items-center justify-center relative glass-panel">
+<span class="font-label-caps text-on-surface-variant absolute top-sm left-sm">Reliability Risk</span>
+<div class="w-24 h-24 mt-xl relative flex items-center justify-center">
+<svg class="w-full h-full transform -rotate-90" viewbox="0 0 36 36">
+<path class="text-surface-container-highest" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="currentColor" stroke-width="3"></path>
+<path class="text-[#954e9b]" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="currentColor" stroke-dasharray="24, 100" stroke-width="3"></path>
+</svg>
+<span class="absolute font-headline-lg text-[#954e9b]">24</span>
+</div>
+<span class="font-data-mono text-[#954e9b] mt-sm">Stable</span>
+</div>
+<!-- Gauge 4: Substitutability -->
+<div class="bg-surface-container p-md rounded-lg border border-outline-variant flex flex-col items-center justify-center relative glass-panel">
+<span class="font-label-caps text-on-surface-variant absolute top-sm left-sm">Substitutability Risk</span>
+<div class="w-24 h-24 mt-xl relative flex items-center justify-center">
+<svg class="w-full h-full transform -rotate-90" viewbox="0 0 36 36">
+<path class="text-surface-container-highest" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="currentColor" stroke-width="3"></path>
+<path class="text-[#ff6b59]" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="currentColor" stroke-dasharray="92, 100" stroke-width="3"></path>
+</svg>
+<span class="absolute font-headline-lg text-[#ff6b59]">92</span>
+</div>
+<span class="font-data-mono text-[#ff6b59] mt-sm">Severe</span>
+</div>
+</div>
+<!-- Simulation Results Chart (Spans 8 cols on desktop) -->
+<div class="col-span-1 md:col-span-8 bg-surface-container p-md rounded-lg border border-outline-variant mt-md">
+<h3 class="font-title-md text-on-surface mb-md">Simulation Results</h3>
+<div class="relative h-64 w-full flex items-end justify-between px-md pb-md">
+<!-- Y Axis Labels -->
+<div class="absolute left-0 top-0 h-full flex flex-col justify-between text-on-surface-variant font-data-mono text-xs pb-md">
+<span>100%</span>
+<span>75%</span>
+<span>50%</span>
+<span>25%</span>
+<span>0%</span>
+</div>
+<!-- Horizontal Grid Lines -->
+<div class="absolute inset-0 pl-md pb-md pointer-events-none">
+<div class="h-full border-b border-surface-container-highest w-full border-t flex flex-col justify-between">
+<div class="border-b border-surface-container-highest flex-1"></div>
+<div class="border-b border-surface-container-highest flex-1"></div>
+<div class="border-b border-surface-container-highest flex-1"></div>
+<div class="flex-1"></div>
+</div>
+</div>
+<!-- Group 1: Scenario A -->
+<div class="flex flex-col items-center gap-xs z-10 w-1/4">
+<div class="flex items-end gap-[2px] h-48 w-full justify-center">
+<div class="w-1/3 bg-[#464c89] opacity-90 rounded-t h-[40%]" title="P50: 40%"></div>
+<div class="w-1/3 bg-[#ff6b59] rounded-t h-[85%]" title="P95: 85%"></div>
+</div>
+<span class="font-label-caps text-on-surface-variant">Port Closure</span>
+</div>
+<!-- Group 2: Scenario B -->
+<div class="flex flex-col items-center gap-xs z-10 w-1/4">
+<div class="flex items-end gap-[2px] h-48 w-full justify-center">
+<div class="w-1/3 bg-[#464c89] opacity-90 rounded-t h-[60%]" title="P50: 60%"></div>
+<div class="w-1/3 bg-[#ff6b59] rounded-t h-[95%]" title="P95: 95%"></div>
+</div>
+<span class="font-label-caps text-on-surface-variant">Labor Strike</span>
+</div>
+<!-- Group 3: Scenario C -->
+<div class="flex flex-col items-center gap-xs z-10 w-1/4">
+<div class="flex items-end gap-[2px] h-48 w-full justify-center">
+<div class="w-1/3 bg-[#464c89] opacity-90 rounded-t h-[20%]" title="P50: 20%"></div>
+<div class="w-1/3 bg-[#ff6b59] rounded-t h-[45%]" title="P95: 45%"></div>
+</div>
+<span class="font-label-caps text-on-surface-variant">Cyber Attack</span>
+</div>
+</div>
+<!-- Legend -->
+<div class="flex justify-center gap-md mt-sm">
+<div class="flex items-center gap-xs">
+<div class="w-3 h-3 bg-[#464c89] opacity-90 rounded"></div>
+<span class="font-data-mono text-on-surface-variant">P50 Probability</span>
+</div>
+<div class="flex items-center gap-xs">
+<div class="w-3 h-3 bg-[#ff6b59] rounded"></div>
+<span class="font-data-mono text-on-surface-variant">P95 Probability</span>
+</div>
+</div>
+</div>
+<!-- Recommended Action Card (Spans 4 cols on desktop) -->
+<div class="col-span-1 md:col-span-4 bg-surface-container p-md rounded-lg border border-outline-variant mt-md flex flex-col justify-between relative overflow-hidden">
+<!-- Decorative background element -->
+<div class="absolute top-0 right-0 w-32 h-32 bg-[#954e9b]/10 rounded-full blur-2xl -mr-16 -mt-16 pointer-events-none"></div>
+<div>
+<h3 class="font-title-md text-on-surface mb-xs">Recommended Action</h3>
+<p class="font-headline-lg-mobile text-[#954e9b] mb-md">Dual Sourcing Initiative</p>
+<div class="space-y-sm mb-lg">
+<div class="flex justify-between items-center border-b border-surface-container-highest pb-xs">
+<span class="font-body-sm text-on-surface-variant">Target Risk</span>
+<span class="font-body-sm text-on-surface font-medium">Geographic Concentration</span>
+</div>
+<div class="flex justify-between items-center border-b border-surface-container-highest pb-xs">
+<span class="font-body-sm text-on-surface-variant">Est. Cost</span>
+<span class="font-data-mono text-on-surface">₹45L</span>
+</div>
+<div class="flex justify-between items-center border-b border-surface-container-highest pb-xs">
+<span class="font-body-sm text-on-surface-variant">Expected Loss</span>
+<span class="font-data-mono text-[#ff6b59]">₹1.2Cr</span>
+</div>
+<div class="flex justify-between items-center border-b border-surface-container-highest pb-xs">
+<span class="font-body-sm text-on-surface-variant">Risk Reduction</span>
+<span class="font-data-mono text-[#954e9b]">₹85L</span>
+</div>
+<div class="flex justify-between items-center border-b border-surface-container-highest pb-xs">
+<span class="font-body-sm text-on-surface-variant">ROI</span>
+<span class="font-data-mono text-[#954e9b]">0.12x</span>
+</div>
+<div class="flex justify-between items-center">
+<span class="font-body-sm text-on-surface-variant">Payback Period</span>
+<span class="font-data-mono text-on-surface">14 months</span>
+</div>
+</div>
+</div>
+<button class="w-full py-xs rounded bg-[#003d5c]/10 border border-[#003d5c] text-[#003d5c] font-title-md hover:bg-[#003d5c]/20 transition-colors flex items-center justify-center gap-xs">
+                View Full Playbook
+                <span class="material-symbols-outlined text-[20px]">arrow_forward</span>
+</button>
+</div>
+</main>
+</body></html>

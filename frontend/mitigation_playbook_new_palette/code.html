@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Mitigation Playbook View</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+  tailwind.config = {
+    darkMode: "class",
+    theme: {
+      extend: {
+        "colors": {
+                "inverse-surface": "#e2e2e9",
+                "on-primary-fixed-variant": "#004a71",
+                "on-tertiary": "#ffffff",
+                "on-background": "#e2e2e9",
+                "on-primary-fixed": "#001e30",
+                "surface-bright": "#373940",
+                "on-primary": "#ffffff",
+                "primary": "#8bcefe",
+                "on-secondary-fixed": "#161b24",
+                "outline": "#8e9199",
+                "surface-container-low": "#191c22",
+                "on-surface-variant": "#c4c6cf",
+                "error-container": "#93000a",
+                "secondary-container": "#3d4754",
+                "on-secondary": "#28313e",
+                "on-tertiary-container": "#e1e0f9",
+                "tertiary-fixed": "#e1e0f9",
+                "surface-container": "#1d2026",
+                "primary-container": "#004a71",
+                "on-tertiary-fixed": "#191a2c",
+                "secondary": "#b9c7d8",
+                "secondary-fixed-dim": "#b9c7d8",
+                "primary-fixed": "#cae6ff",
+                "surface-container-high": "#282a31",
+                "on-secondary-container": "#d6e4f5",
+                "surface-dim": "#11141a",
+                "surface-container-lowest": "#0c0e14",
+                "background": "#11141a",
+                "on-surface": "#e2e2e9",
+                "on-error-container": "#ffdad6",
+                "secondary-fixed": "#d6e4f5",
+                "error": "#ffb4ab",
+                "surface-container-highest": "#33353c",
+                "surface-variant": "#44474e",
+                "tertiary-container": "#454659",
+                "on-primary-container": "#cae6ff",
+                "on-error": "#690005",
+                "on-secondary-fixed-variant": "#3d4754",
+                "inverse-on-surface": "#2e3137",
+                "primary-fixed-dim": "#8bcefe",
+                "tertiary": "#c5c4dd",
+                "inverse-primary": "#006396",
+                "on-tertiary-fixed-variant": "#454659",
+                "outline-variant": "#44474e",
+                "tertiary-fixed-dim": "#c5c4dd",
+                "surface-tint": "#8bcefe",
+                "surface": "#11141a"
+        },
+        "borderRadius": {
+                "DEFAULT": "0.125rem",
+                "lg": "0.25rem",
+                "xl": "0.5rem",
+                "full": "0.75rem"
+        },
+        "spacing": {
+                "sm": "16px",
+                "md": "24px",
+                "xs": "8px",
+                "margin-safe": "32px",
+                "gutter": "24px",
+                "xl": "64px",
+                "lg": "40px",
+                "base": "4px"
+        },
+        "fontFamily": {
+                "body-lg": [
+                        "Inter"
+                ],
+                "title-md": [
+                        "Inter"
+                ],
+                "label-caps": [
+                        "Inter"
+                ],
+                "headline-lg-mobile": [
+                        "Inter"
+                ],
+                "data-mono": [
+                        "JetBrains Mono"
+                ],
+                "headline-lg": [
+                        "Inter"
+                ],
+                "display-lg": [
+                        "Inter"
+                ],
+                "body-sm": [
+                        "Inter"
+                ]
+        },
+        "fontSize": {
+                "body-lg": [
+                        "16px",
+                        {
+                                "lineHeight": "24px",
+                                "fontWeight": "400"
+                        }
+                ],
+                "title-md": [
+                        "20px",
+                        {
+                                "lineHeight": "28px",
+                                "fontWeight": "600"
+                        }
+                ],
+                "label-caps": [
+                        "12px",
+                        {
+                                "lineHeight": "16px",
+                                "letterSpacing": "0.05em",
+                                "fontWeight": "700"
+                        }
+                ],
+                "headline-lg-mobile": [
+                        "24px",
+                        {
+                                "lineHeight": "32px",
+                                "fontWeight": "600"
+                        }
+                ],
+                "data-mono": [
+                        "13px",
+                        {
+                                "lineHeight": "18px",
+                                "fontWeight": "500"
+                        }
+                ],
+                "headline-lg": [
+                        "32px",
+                        {
+                                "lineHeight": "40px",
+                                "letterSpacing": "-0.01em",
+                                "fontWeight": "600"
+                        }
+                ],
+                "display-lg": [
+                        "48px",
+                        {
+                                "lineHeight": "56px",
+                                "letterSpacing": "-0.02em",
+                                "fontWeight": "700"
+                        }
+                ],
+                "body-sm": [
+                        "14px",
+                        {
+                                "lineHeight": "20px",
+                                "fontWeight": "400"
+                        }
+                ]
+        }
+},
+    },
+  }
+</script>
+<style>
+        .glass-overlay {
+            backdrop-filter: blur(12px);
+            background-color: rgba(17, 20, 26, 0.6);
+        }
+        body {
+            background-color: #0c0e14; /* surface-container-lowest */
+            color: #e2e2e9; /* on-surface */
+        }
+        .pie-chart {
+            background: conic-gradient(
+                #003d5c 0% 45%,
+                #ffa600 45% 75%,
+                #ff6b59 75% 95%,
+                #dd4d88 95% 100%
+            );
+            border-radius: 50%;
+        }
+    </style>
+</head>
+<body class="font-body-lg text-body-lg antialiased overflow-x-hidden">
+<!-- TopNavBar -->
+<header class="bg-surface dark:bg-surface fixed top-0 w-full z-50 border-b border-outline-variant dark:border-outline-variant flex justify-between items-center px-md py-xs w-full max-w-full">
+<div class="flex items-center gap-md">
+<span class="font-headline-lg text-headline-lg font-bold text-primary dark:text-primary">ShockProof</span>
+<nav class="hidden md:flex gap-sm">
+<a class="text-on-surface-variant dark:text-on-surface-variant hover:text-primary transition-colors duration-200 cursor-pointer active:opacity-80 font-body-lg text-body-lg" href="#">Dashboard</a>
+<a class="text-on-surface-variant dark:text-on-surface-variant hover:text-primary transition-colors duration-200 cursor-pointer active:opacity-80 font-body-lg text-body-lg" href="#">Risk Map</a>
+<a class="text-on-surface-variant dark:text-on-surface-variant hover:text-primary transition-colors duration-200 cursor-pointer active:opacity-80 font-body-lg text-body-lg" href="#">Inventory</a>
+<a class="text-primary dark:text-primary border-b-2 border-primary pb-1 hover:text-primary transition-colors duration-200 cursor-pointer active:opacity-80 font-body-lg text-body-lg" href="#">Analytics</a>
+</nav>
+</div>
+<div class="flex items-center gap-xs">
+<button class="text-on-surface-variant hover:text-primary transition-colors duration-200 cursor-pointer active:opacity-80 p-base rounded-full">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<button class="text-on-surface-variant hover:text-primary transition-colors duration-200 cursor-pointer active:opacity-80 p-base rounded-full">
+<span class="material-symbols-outlined">settings</span>
+</button>
+<div class="w-8 h-8 rounded-full bg-surface-container-high border border-outline-variant ml-xs flex items-center justify-center overflow-hidden">
+<span class="material-symbols-outlined text-on-surface-variant">person</span>
+</div>
+</div>
+</header>
+<!-- SideNavBar -->
+<aside class="bg-surface-container dark:bg-surface-container fixed left-0 top-0 h-screen w-64 border-r border-outline-variant dark:border-outline-variant flex flex-col h-full py-md px-sm pt-[88px] z-40 hidden md:flex">
+<div class="mb-lg px-xs">
+<div class="flex items-center gap-xs mb-base">
+<span class="material-symbols-outlined text-primary text-2xl">analytics</span>
+<span class="font-title-md text-title-md font-bold text-on-surface">ShockProof</span>
+</div>
+<p class="font-label-caps text-label-caps text-on-surface-variant">Supply Chain Risk Analytics</p>
+</div>
+<nav class="flex-1 flex flex-col gap-base">
+<a class="flex items-center gap-sm px-sm py-xs text-on-surface-variant hover:bg-surface-container-high hover:bg-surface-container-highest transition-all scale-95 active:scale-90 rounded-lg font-label-caps text-label-caps" href="#">
+<span class="material-symbols-outlined">dashboard</span> Overview
+            </a>
+<a class="flex items-center gap-sm px-sm py-xs text-on-surface-variant hover:bg-surface-container-high hover:bg-surface-container-highest transition-all scale-95 active:scale-90 rounded-lg font-label-caps text-label-caps" href="#">
+<span class="material-symbols-outlined">hub</span> Network Graph
+            </a>
+<a class="flex items-center gap-sm px-sm py-xs bg-secondary-container text-on-secondary-container rounded-lg font-bold hover:bg-surface-container-highest transition-all scale-95 active:scale-90 font-label-caps text-label-caps" href="#">
+<span class="material-symbols-outlined">security</span> Supplier Risk
+            </a>
+<a class="flex items-center gap-sm px-sm py-xs text-on-surface-variant hover:bg-surface-container-high hover:bg-surface-container-highest transition-all scale-95 active:scale-90 rounded-lg font-label-caps text-label-caps" href="#">
+<span class="material-symbols-outlined">local_shipping</span> Logistics
+            </a>
+<a class="flex items-center gap-sm px-sm py-xs text-on-surface-variant hover:bg-surface-container-high hover:bg-surface-container-highest transition-all scale-95 active:scale-90 rounded-lg font-label-caps text-label-caps" href="#">
+<span class="material-symbols-outlined">assessment</span> Reports
+            </a>
+</nav>
+<div class="mt-auto flex flex-col gap-base border-t border-outline-variant pt-md">
+<a class="flex items-center gap-sm px-sm py-xs text-on-surface-variant hover:bg-surface-container-high hover:bg-surface-container-highest transition-all scale-95 active:scale-90 rounded-lg font-label-caps text-label-caps" href="#">
+<span class="material-symbols-outlined">help</span> Help Center
+            </a>
+<a class="flex items-center gap-sm px-sm py-xs text-on-surface-variant hover:bg-surface-container-high hover:bg-surface-container-highest transition-all scale-95 active:scale-90 rounded-lg font-label-caps text-label-caps" href="#">
+<span class="material-symbols-outlined">logout</span> Logout
+            </a>
+</div>
+</aside>
+<!-- Main Content Canvas -->
+<main class="md:ml-64 mt-[72px] p-md max-w-[1600px] mx-auto space-y-md">
+<header class="flex justify-between items-end mb-sm">
+<div>
+<h1 class="font-headline-lg text-headline-lg text-on-surface">Mitigation Playbook View</h1>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-base">Prioritized action matrix for supplier risk reduction.</p>
+</div>
+<button class="bg-primary-container text-on-primary-container px-sm py-xs rounded flex items-center gap-xs font-body-sm text-body-sm font-bold border border-primary-container hover:bg-primary-fixed hover:text-on-primary-fixed transition-colors">
+<span class="material-symbols-outlined text-[18px]">download</span> Export Playbook
+            </button>
+</header>
+<!-- Summary Banner -->
+<section class="bg-surface-container border border-outline-variant rounded-lg p-md flex flex-wrap lg:flex-nowrap gap-md justify-between items-center relative overflow-hidden">
+<div class="absolute inset-0 bg-primary/5 opacity-50 pointer-events-none"></div>
+<div class="flex-1 min-w-[200px] relative z-10 border-r border-outline-variant pr-md last:border-r-0">
+<h3 class="font-label-caps text-label-caps text-on-surface-variant mb-xs">Total Budget Allocated</h3>
+<div class="font-display-lg text-display-lg text-on-surface tracking-tight">₹1.44<span class="text-headline-lg">Cr</span></div>
+</div>
+<div class="flex-1 min-w-[200px] relative z-10 border-r border-outline-variant px-md last:border-r-0">
+<h3 class="font-label-caps text-label-caps text-on-surface-variant mb-xs">Total Risk Eliminated</h3>
+<div class="font-display-lg text-display-lg text-[#003d5c] tracking-tight">₹11.8<span class="text-headline-lg">L</span></div>
+</div>
+<div class="flex-1 min-w-[200px] relative z-10 pl-md">
+<h3 class="font-label-caps text-label-caps text-on-surface-variant mb-xs">Portfolio ROI Matrix</h3>
+<div class="font-display-lg text-display-lg text-[#ffa600] tracking-tight">0.08<span class="text-headline-lg">×</span></div>
+</div>
+</section>
+<!-- Main Data Table -->
+<section class="bg-surface-container border border-outline-variant rounded-lg overflow-hidden flex flex-col">
+<div class="px-md py-sm border-b border-outline-variant bg-surface-container-high flex justify-between items-center">
+<h2 class="font-title-md text-title-md text-on-surface">Active Interventions</h2>
+<div class="flex items-center gap-sm">
+<span class="material-symbols-outlined text-on-surface-variant cursor-pointer hover:text-primary">filter_list</span>
+<span class="material-symbols-outlined text-on-surface-variant cursor-pointer hover:text-primary">more_vert</span>
+</div>
+</div>
+<div class="overflow-x-auto">
+<table class="w-full text-left border-collapse min-w-[1000px]">
+<thead class="bg-surface-container-low font-label-caps text-label-caps text-on-surface-variant border-b border-outline-variant">
+<tr>
+<th class="py-sm px-sm font-normal">Supplier Name</th>
+<th class="py-sm px-sm font-normal">Priority Quadrant</th>
+<th class="py-sm px-sm font-normal">Dominant Risk Factor</th>
+<th class="py-sm px-sm font-normal">Recommended Action</th>
+<th class="py-sm px-sm font-normal text-right">Action Cost (₹)</th>
+<th class="py-sm px-sm font-normal text-right">Exp. Loss (₹)</th>
+<th class="py-sm px-sm font-normal text-right">Risk Reduction (₹)</th>
+<th class="py-sm px-sm font-normal text-right group cursor-pointer">
+                                ROI <span class="material-symbols-outlined text-[14px] align-middle text-primary">arrow_downward</span>
+</th>
+<th class="py-sm px-sm font-normal text-right">Payback (Mo)</th>
+</tr>
+</thead>
+<tbody class="font-body-sm text-body-sm text-on-surface">
+<!-- High Priority Row -->
+<tr class="border-b border-outline-variant/50 bg-[#ff6b59]/10 hover:bg-[#ff6b59]/20 transition-colors">
+<td class="py-xs px-sm font-semibold">Apex Microelectronics</td>
+<td class="py-xs px-sm">
+<span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-[#ff6b59]/20 text-[#ff6b59] border border-[#ff6b59]/30 shadow-[0_0_8px_rgba(255,107,89,0.2)]">Critical</span>
+</td>
+<td class="py-xs px-sm">Geopolitical Tension</td>
+<td class="py-xs px-sm">Establish Dual Source (Vietnam)</td>
+<td class="py-xs px-sm text-right font-data-mono text-data-mono">45.0L</td>
+<td class="py-xs px-sm text-right font-data-mono text-data-mono">250.0L</td>
+<td class="py-xs px-sm text-right font-data-mono text-data-mono text-[#003d5c]">210.0L</td>
+<td class="py-xs px-sm text-right font-data-mono text-data-mono text-[#ffa600] font-bold">4.66×</td>
+<td class="py-xs px-sm text-right font-data-mono text-data-mono">14.5</td>
+</tr>
+<!-- Medium High Priority Row -->
+<tr class="border-b border-outline-variant/50 bg-[#ffa600]/10 hover:bg-[#ffa600]/20 transition-colors">
+<td class="py-xs px-sm font-semibold">Global Freight Lines</td>
+<td class="py-xs px-sm">
+<span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-[#ffa600]/20 text-[#ffa600] border border-[#ffa600]/30">High</span>
+</td>
+<td class="py-xs px-sm">Port Congestion</td>
+<td class="py-xs px-sm">Expedite Air Freight Allocation</td>
+<td class="py-xs px-sm text-right font-data-mono text-data-mono">12.5L</td>
+<td class="py-xs px-sm text-right font-data-mono text-data-mono">40.0L</td>
+<td class="py-xs px-sm text-right font-data-mono text-data-mono text-[#003d5c]">35.0L</td>
+<td class="py-xs px-sm text-right font-data-mono text-data-mono text-[#ffa600] font-bold">2.80×</td>
+<td class="py-xs px-sm text-right font-data-mono text-data-mono">2.1</td>
+</tr>
+<!-- Standard Row -->
+<tr class="border-b border-outline-variant/50 hover:bg-[#954e9b]/10 transition-colors">
+<td class="py-xs px-sm font-semibold">ChemCorp Synths</td>
+<td class="py-xs px-sm">
+<span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-[#954e9b]/20 text-[#954e9b] border border-[#954e9b]/30">Moderate</span>
+</td>
+<td class="py-xs px-sm">Financial Insolvency</td>
+<td class="py-xs px-sm">Pre-payment restructuring</td>
+<td class="py-xs px-sm text-right font-data-mono text-data-mono">5.0L</td>
+<td class="py-xs px-sm text-right font-data-mono text-data-mono">15.0L</td>
+<td class="py-xs px-sm text-right font-data-mono text-data-mono text-[#003d5c]">8.5L</td>
+<td class="py-xs px-sm text-right font-data-mono text-data-mono text-[#ffa600] font-bold">1.70×</td>
+<td class="py-xs px-sm text-right font-data-mono text-data-mono">6.0</td>
+</tr>
+<!-- Standard Row -->
+<tr class="hover:bg-[#464c89]/10 transition-colors">
+<td class="py-xs px-sm font-semibold">Stark Logistics</td>
+<td class="py-xs px-sm">
+<span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-[#464c89]/20 text-[#464c89] border border-[#464c89]/30">Low</span>
+</td>
+<td class="py-xs px-sm">Weather Disruption</td>
+<td class="py-xs px-sm">Buffer Stock Increase (5%)</td>
+<td class="py-xs px-sm text-right font-data-mono text-data-mono">2.0L</td>
+<td class="py-xs px-sm text-right font-data-mono text-data-mono">3.0L</td>
+<td class="py-xs px-sm text-right font-data-mono text-data-mono text-[#003d5c]">2.5L</td>
+<td class="py-xs px-sm text-right font-data-mono text-data-mono text-[#ffa600] font-bold">1.25×</td>
+<td class="py-xs px-sm text-right font-data-mono text-data-mono">4.5</td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+<!-- Charts Area -->
+<section class="grid grid-cols-1 lg:grid-cols-12 gap-md">
+<!-- Left Chart: Paired Bar -->
+<div class="lg:col-span-8 bg-surface-container border border-outline-variant rounded-lg p-md flex flex-col">
+<div class="flex justify-between items-center mb-md">
+<h3 class="font-title-md text-title-md text-on-surface">Action Cost vs Risk Reduction (Top 5)</h3>
+<div class="flex gap-sm font-label-caps text-label-caps text-on-surface-variant">
+<div class="flex items-center gap-xs"><div class="w-3 h-3 bg-outline rounded-sm"></div> Cost</div>
+<div class="flex items-center gap-xs"><div class="w-3 h-3 bg-[#003d5c] rounded-sm"></div> Reduction</div>
+</div>
+</div>
+<div class="flex-1 relative min-h-[240px] flex items-end justify-around pb-md border-b border-l border-outline-variant/50 pt-lg">
+<!-- Y-Axis Guides -->
+<div class="absolute left-0 top-0 w-full h-full flex flex-col justify-between pointer-events-none">
+<div class="w-full h-px bg-outline-variant/30"></div>
+<div class="w-full h-px bg-outline-variant/30"></div>
+<div class="w-full h-px bg-outline-variant/30"></div>
+<div class="w-full h-px bg-outline-variant/30"></div>
+</div>
+<!-- Bars -->
+<div class="relative z-10 flex gap-1 items-end h-full w-16 group">
+<div class="w-1/2 bg-outline h-[30%] rounded-t-sm group-hover:bg-outline-variant transition-colors"></div>
+<div class="w-1/2 bg-[#003d5c] h-[85%] rounded-t-sm transition-colors shadow-[0_0_10px_rgba(0,61,92,0.2)] hover:bg-[#003d5c]/80"></div>
+<span class="absolute -bottom-6 w-full text-center font-label-caps text-label-caps text-on-surface-variant truncate">Apex</span>
+</div>
+<div class="relative z-10 flex gap-1 items-end h-full w-16 group">
+<div class="w-1/2 bg-outline h-[15%] rounded-t-sm group-hover:bg-outline-variant transition-colors"></div>
+<div class="w-1/2 bg-[#003d5c] h-[40%] rounded-t-sm transition-colors hover:bg-[#003d5c]/80"></div>
+<span class="absolute -bottom-6 w-full text-center font-label-caps text-label-caps text-on-surface-variant truncate">Global</span>
+</div>
+<div class="relative z-10 flex gap-1 items-end h-full w-16 group">
+<div class="w-1/2 bg-outline h-[8%] rounded-t-sm group-hover:bg-outline-variant transition-colors"></div>
+<div class="w-1/2 bg-[#003d5c] h-[25%] rounded-t-sm transition-colors hover:bg-[#003d5c]/80"></div>
+<span class="absolute -bottom-6 w-full text-center font-label-caps text-label-caps text-on-surface-variant truncate">ChemCorp</span>
+</div>
+<div class="relative z-10 flex gap-1 items-end h-full w-16 group">
+<div class="w-1/2 bg-outline h-[5%] rounded-t-sm group-hover:bg-outline-variant transition-colors"></div>
+<div class="w-1/2 bg-[#003d5c] h-[12%] rounded-t-sm transition-colors hover:bg-[#003d5c]/80"></div>
+<span class="absolute -bottom-6 w-full text-center font-label-caps text-label-caps text-on-surface-variant truncate">Stark</span>
+</div>
+<div class="relative z-10 flex gap-1 items-end h-full w-16 group">
+<div class="w-1/2 bg-outline h-[4%] rounded-t-sm group-hover:bg-outline-variant transition-colors"></div>
+<div class="w-1/2 bg-[#003d5c] h-[9%] rounded-t-sm transition-colors hover:bg-[#003d5c]/80"></div>
+<span class="absolute -bottom-6 w-full text-center font-label-caps text-label-caps text-on-surface-variant truncate">Nexus</span>
+</div>
+</div>
+</div>
+<!-- Right Chart: Pie Chart -->
+<div class="lg:col-span-4 bg-surface-container border border-outline-variant rounded-lg p-md flex flex-col items-center">
+<h3 class="font-title-md text-title-md text-on-surface w-full text-left mb-lg">Action Type Distribution</h3>
+<div class="relative w-48 h-48 pie-chart shadow-[0_0_20px_rgba(0,0,0,0.5)]">
+<!-- Inner hollow for donut effect -->
+<div class="absolute inset-[25%] bg-surface-container rounded-full flex items-center justify-center border border-outline-variant">
+<div class="text-center">
+<div class="font-display-lg text-[24px] font-bold text-on-surface leading-none">12</div>
+<div class="font-label-caps text-[10px] text-on-surface-variant mt-1">Actions</div>
+</div>
+</div>
+</div>
+<div class="w-full mt-lg grid grid-cols-2 gap-y-sm gap-x-xs font-label-caps text-label-caps text-on-surface-variant">
+<div class="flex items-center gap-xs"><div class="w-3 h-3 rounded-sm" style="background-color: #003d5c;"></div> Sourcing (45%)</div>
+<div class="flex items-center gap-xs"><div class="w-3 h-3 rounded-sm" style="background-color: #ffa600;"></div> Logistics (30%)</div>
+<div class="flex items-center gap-xs"><div class="w-3 h-3 rounded-sm" style="background-color: #ff6b59;"></div> Financial (20%)</div>
+<div class="flex items-center gap-xs"><div class="w-3 h-3 rounded-sm" style="background-color: #dd4d88;"></div> Other (5%)</div>
+</div>
+</div>
+</section>
+</main>
+</body></html>

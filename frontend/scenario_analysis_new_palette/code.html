@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>ShockProof - Scenario Analysis</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&amp;family=JetBrains+Mono:wght@500&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+  tailwind.config = {
+    darkMode: "class",
+    theme: {
+      extend: {
+        "colors": {
+                "inverse-surface": "#e0e2e9",
+                "on-primary-fixed-variant": "#004a78",
+                "on-tertiary": "#542100",
+                "on-background": "#e0e2e9",
+                "on-primary-fixed": "#001d34",
+                "surface-bright": "#36393e",
+                "on-primary": "#003355",
+                "primary": "#99cbff",
+                "on-secondary-fixed": "#410004",
+                "outline": "#8a919c",
+                "surface-container-low": "#181c20",
+                "on-surface-variant": "#c0c7d2",
+                "error-container": "#93000a",
+                "secondary-container": "#a00015",
+                "on-secondary": "#68000a",
+                "on-tertiary-container": "#4e1e00",
+                "tertiary-fixed": "#ffdbca",
+                "surface-container": "#1c2024",
+                "primary-container": "#4299e1",
+                "on-tertiary-fixed": "#331100",
+                "secondary": "#ffb3ad",
+                "secondary-fixed-dim": "#ffb3ad",
+                "primary-fixed": "#cfe5ff",
+                "surface-container-high": "#272a2f",
+                "on-secondary-container": "#ffa9a2",
+                "surface-dim": "#101418",
+                "surface-container-lowest": "#0b0f13",
+                "background": "#101418",
+                "on-surface": "#e0e2e9",
+                "on-error-container": "#ffdad6",
+                "secondary-fixed": "#ffdad7",
+                "error": "#ffb4ab",
+                "surface-container-highest": "#31353a",
+                "surface-variant": "#31353a",
+                "tertiary-container": "#e77328",
+                "on-primary-container": "#002f4e",
+                "on-error": "#690005",
+                "on-secondary-fixed-variant": "#930013",
+                "inverse-on-surface": "#2d3136",
+                "primary-fixed-dim": "#99cbff",
+                "tertiary": "#ffb68f",
+                "inverse-primary": "#00629d",
+                "on-tertiary-fixed-variant": "#773200",
+                "outline-variant": "#404751",
+                "tertiary-fixed-dim": "#ffb68f",
+                "surface-tint": "#99cbff",
+                "surface": "#101418"
+        },
+        "borderRadius": {
+                "DEFAULT": "0.125rem",
+                "lg": "0.25rem",
+                "xl": "0.5rem",
+                "full": "0.75rem"
+        },
+        "spacing": {
+                "sm": "16px",
+                "md": "24px",
+                "xs": "8px",
+                "margin-safe": "32px",
+                "gutter": "24px",
+                "xl": "64px",
+                "lg": "40px",
+                "base": "4px"
+        },
+        "fontFamily": {
+                "body-lg": [
+                        "Inter"
+                ],
+                "title-md": [
+                        "Inter"
+                ],
+                "label-caps": [
+                        "Inter"
+                ],
+                "headline-lg-mobile": [
+                        "Inter"
+                ],
+                "data-mono": [
+                        "JetBrains Mono"
+                ],
+                "headline-lg": [
+                        "Inter"
+                ],
+                "display-lg": [
+                        "Inter"
+                ],
+                "body-sm": [
+                        "Inter"
+                ]
+        },
+        "fontSize": {
+                "body-lg": [
+                        "16px",
+                        {
+                                "lineHeight": "24px",
+                                "fontWeight": "400"
+                        }
+                ],
+                "title-md": [
+                        "20px",
+                        {
+                                "lineHeight": "28px",
+                                "fontWeight": "600"
+                        }
+                ],
+                "label-caps": [
+                        "12px",
+                        {
+                                "lineHeight": "16px",
+                                "letterSpacing": "0.05em",
+                                "fontWeight": "700"
+                        }
+                ],
+                "headline-lg-mobile": [
+                        "24px",
+                        {
+                                "lineHeight": "32px",
+                                "fontWeight": "600"
+                        }
+                ],
+                "data-mono": [
+                        "13px",
+                        {
+                                "lineHeight": "18px",
+                                "fontWeight": "500"
+                        }
+                ],
+                "headline-lg": [
+                        "32px",
+                        {
+                                "lineHeight": "40px",
+                                "letterSpacing": "-0.01em",
+                                "fontWeight": "600"
+                        }
+                ],
+                "display-lg": [
+                        "48px",
+                        {
+                                "lineHeight": "56px",
+                                "letterSpacing": "-0.02em",
+                                "fontWeight": "700"
+                        }
+                ],
+                "body-sm": [
+                        "14px",
+                        {
+                                "lineHeight": "20px",
+                                "fontWeight": "400"
+                        }
+                ]
+        }
+},
+    },
+  }
+</script>
+<style>
+        body {
+            background-color: #0b1326; 
+            color: #e0e2e9;
+        }
+        .card-level-1 {
+            background-color: #131b2e;
+            border: 1px solid #31394d;
+        }
+        .glass-panel {
+            background: rgba(19, 27, 46, 0.6);
+            backdrop-filter: blur(12px);
+            border: 1px solid #31394d;
+        }
+        /* Heatmap cell base styles */
+        .hm-cell { width: 100%; height: 100%; min-height: 24px; border-radius: 4px; }
+        .hm-bg-0 { background-color: #ffffff; } 
+        .hm-bg-1 { background-color: #d1d4e8; }
+        .hm-bg-2 { background-color: #b2b6d5; }
+        .hm-bg-3 { background-color: #9299c2; }
+        .hm-bg-4 { background-color: #737baf; }
+        .hm-bg-5 { background-color: #555d9c; }
+        .hm-bg-6 { background-color: #464c89; } 
+        .hm-bg-7 { background-color: #b85b5d; } 
+        .hm-bg-8 { background-color: #cf605c; }
+        .hm-bg-9 { background-color: #e7655a; }
+        .hm-bg-10 { background-color: #ff6b59; } 
+        
+        .bar-chart-fill {
+            background-color: #464c89; 
+        }
+    </style>
+</head>
+<body class="font-body-lg text-body-lg min-h-screen flex flex-col md:flex-row antialiased overflow-x-hidden">
+<!-- SideNavBar (Desktop) -->
+<nav class="hidden md:flex flex-col h-screen w-64 fixed left-0 top-0 bg-surface-container border-r border-outline-variant py-md px-sm z-40">
+<div class="mb-xl flex items-center gap-sm px-xs">
+<span class="material-symbols-outlined text-[32px] text-primary" style="font-variation-settings: 'FILL' 1;">assessment</span>
+<div>
+<h1 class="font-title-md text-title-md font-bold text-on-surface">ShockProof</h1>
+<p class="font-label-caps text-label-caps text-on-surface-variant">Supply Chain Risk Analytics</p>
+</div>
+</div>
+<ul class="flex flex-col gap-xs flex-grow">
+<li>
+<a class="flex items-center gap-sm px-sm py-xs rounded-xl text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+<span class="font-body-sm text-body-sm font-semibold">Overview</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-sm px-sm py-xs rounded-xl text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all" href="#">
+<span class="material-symbols-outlined">hub</span>
+<span class="font-body-sm text-body-sm font-semibold">Network Graph</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-sm px-sm py-xs rounded-xl text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all" href="#">
+<span class="material-symbols-outlined">security</span>
+<span class="font-body-sm text-body-sm font-semibold">Supplier Risk</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-sm px-sm py-xs rounded-xl bg-secondary-container text-on-secondary-container font-bold transition-all shadow-[0_0_15px_rgba(160,0,21,0.2)]" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">local_shipping</span>
+<span class="font-body-sm text-body-sm font-bold">Logistics</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-sm px-sm py-xs rounded-xl text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all" href="#">
+<span class="material-symbols-outlined">assessment</span>
+<span class="font-body-sm text-body-sm font-semibold">Reports</span>
+</a>
+</li>
+</ul>
+<div class="mt-auto border-t border-outline-variant pt-md flex flex-col gap-xs">
+<a class="flex items-center gap-sm px-sm py-xs rounded-xl text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all" href="#">
+<span class="material-symbols-outlined">help</span>
+<span class="font-body-sm text-body-sm font-semibold">Help Center</span>
+</a>
+<a class="flex items-center gap-sm px-sm py-xs rounded-xl text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all" href="#">
+<span class="material-symbols-outlined">logout</span>
+<span class="font-body-sm text-body-sm font-semibold">Logout</span>
+</a>
+</div>
+</nav>
+<!-- TopNavBar (Mobile) -->
+<header class="md:hidden flex justify-between items-center px-md py-xs w-full fixed top-0 bg-surface border-b border-outline-variant z-50">
+<div class="flex items-center gap-sm">
+<span class="material-symbols-outlined text-[24px] text-primary" style="font-variation-settings: 'FILL' 1;">assessment</span>
+<h1 class="font-headline-lg-mobile text-headline-lg-mobile font-bold text-primary">ShockProof</h1>
+</div>
+<div class="flex gap-sm text-on-surface-variant">
+<span class="material-symbols-outlined cursor-pointer hover:text-primary transition-colors duration-200">notifications</span>
+<span class="material-symbols-outlined cursor-pointer hover:text-primary transition-colors duration-200">menu</span>
+</div>
+</header>
+<!-- Main Canvas -->
+<main class="flex-grow md:ml-64 mt-16 md:mt-0 p-sm md:p-lg lg:p-lg flex flex-col gap-md max-w-[1600px] w-full mx-auto">
+<!-- Header -->
+<div class="flex flex-col gap-xs">
+<h2 class="font-headline-lg text-headline-lg font-bold text-on-surface">Scenario Analysis</h2>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Evaluate P95 Revenue at Risk across multiple disruption vectors.</p>
+</div>
+<!-- Scenario Selector (Full Width Toggle) -->
+<div class="card-level-1 rounded-xl p-base w-full overflow-x-auto no-scrollbar">
+<div class="flex min-w-max gap-base">
+<button class="px-md py-xs rounded-lg font-body-sm text-body-sm font-semibold text-on-surface-variant hover:bg-surface-container-high border border-transparent transition-colors">
+                    Port Strike
+                </button>
+<button class="px-md py-xs rounded-lg font-body-sm text-body-sm font-semibold text-on-surface-variant hover:bg-surface-container-high border border-transparent transition-colors">
+                    Factory Shutdown
+                </button>
+<button class="px-md py-xs rounded-lg font-body-sm text-body-sm font-semibold text-on-surface-variant hover:bg-surface-container-high border border-transparent transition-colors">
+                    Currency Shock
+                </button>
+<button class="px-md py-xs rounded-lg font-body-sm text-body-sm font-bold transition-colors flex items-center gap-xs shadow-[0_0_10px_rgba(0,61,92,0.3)]" style="background-color: #003d5c; color: #ffffff; border: 1px solid #464c89;">
+<span class="material-symbols-outlined text-[18px]">local_shipping</span>
+                    Logistics Delay
+                </button>
+<button class="px-md py-xs rounded-lg font-body-sm text-body-sm font-semibold text-on-surface-variant hover:bg-surface-container-high border border-transparent transition-colors">
+                    Quality Failure
+                </button>
+</div>
+</div>
+<!-- Main Visual: Heatmap -->
+<div class="card-level-1 rounded-xl p-md flex flex-col gap-md">
+<div class="flex justify-between items-center border-b border-outline-variant pb-sm">
+<h3 class="font-title-md text-title-md font-bold text-on-surface">P95 Revenue at Risk Heatmap - All Suppliers × All Scenarios</h3>
+<div class="flex items-center gap-xs">
+<span class="font-label-caps text-label-caps text-on-surface-variant">Risk Level:</span>
+<div class="flex h-2 w-24 rounded-full overflow-hidden">
+<div class="flex-1 bg-[#d1d4e8]"></div>
+<div class="flex-1 bg-[#9299c2]"></div>
+<div class="flex-1 bg-[#464c89]"></div>
+<div class="flex-1 bg-[#cf605c]"></div>
+<div class="flex-1 bg-[#ff6b59]"></div>
+</div>
+</div>
+</div>
+<div class="w-full overflow-x-auto">
+<div class="min-w-[800px]">
+<!-- Heatmap Grid -->
+<!-- Y-Axis labels (Suppliers) left, X-Axis labels (Scenarios) top -->
+<div class="grid grid-cols-6 gap-xs mb-xs">
+<div class="font-label-caps text-label-caps text-on-surface-variant pt-auto text-right pr-sm self-end">Supplier / Scenario</div>
+<div class="font-label-caps text-label-caps text-on-surface-variant text-center">Port Strike</div>
+<div class="font-label-caps text-label-caps text-on-surface-variant text-center">Factory Shutdown</div>
+<div class="font-label-caps text-label-caps text-on-surface-variant text-center">Currency Shock</div>
+<div class="font-label-caps text-label-caps text-primary text-center font-bold">Logistics Delay</div>
+<div class="font-label-caps text-label-caps text-on-surface-variant text-center">Quality Failure</div>
+</div>
+<!-- Rows -->
+<div class="flex flex-col gap-xs">
+<!-- Supplier A -->
+<div class="grid grid-cols-6 gap-xs items-center group">
+<div class="font-data-mono text-data-mono text-on-surface text-right pr-sm group-hover:text-primary transition-colors">SUP-A-TechCorp</div>
+<div class="hm-cell hm-bg-2"></div>
+<div class="hm-cell hm-bg-8"></div>
+<div class="hm-cell hm-bg-1"></div>
+<div class="hm-cell hm-bg-10 shadow-[0_0_8px_rgba(255,107,89,0.4)] border border-[#ff6b59]"></div> <!-- Highlight active scenario risk -->
+<div class="hm-cell hm-bg-4"></div>
+</div>
+<!-- Supplier B -->
+<div class="grid grid-cols-6 gap-xs items-center group">
+<div class="font-data-mono text-data-mono text-on-surface text-right pr-sm group-hover:text-primary transition-colors">SUP-B-GlobalFab</div>
+<div class="hm-cell hm-bg-6"></div>
+<div class="hm-cell hm-bg-3"></div>
+<div class="hm-cell hm-bg-7"></div>
+<div class="hm-cell hm-bg-5"></div>
+<div class="hm-cell hm-bg-2"></div>
+</div>
+<!-- Supplier C -->
+<div class="grid grid-cols-6 gap-xs items-center group">
+<div class="font-data-mono text-data-mono text-on-surface text-right pr-sm group-hover:text-primary transition-colors">SUP-C-MicroCirc</div>
+<div class="hm-cell hm-bg-1"></div>
+<div class="hm-cell hm-bg-9"></div>
+<div class="hm-cell hm-bg-2"></div>
+<div class="hm-cell hm-bg-8"></div>
+<div class="hm-cell hm-bg-5"></div>
+</div>
+<!-- Supplier D -->
+<div class="grid grid-cols-6 gap-xs items-center group">
+<div class="font-data-mono text-data-mono text-on-surface text-right pr-sm group-hover:text-primary transition-colors">SUP-D-LogiWorks</div>
+<div class="hm-cell hm-bg-8"></div>
+<div class="hm-cell hm-bg-2"></div>
+<div class="hm-cell hm-bg-4"></div>
+<div class="hm-cell hm-bg-9"></div>
+<div class="hm-cell hm-bg-1"></div>
+</div>
+<!-- Supplier E -->
+<div class="grid grid-cols-6 gap-xs items-center group">
+<div class="font-data-mono text-data-mono text-on-surface text-right pr-sm group-hover:text-primary transition-colors">SUP-E-PrimeMat</div>
+<div class="hm-cell hm-bg-3"></div>
+<div class="hm-cell hm-bg-5"></div>
+<div class="hm-cell hm-bg-8"></div>
+<div class="hm-cell hm-bg-6"></div>
+<div class="hm-cell hm-bg-7"></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Bottom: Horizontal Bar Chart -->
+<div class="card-level-1 rounded-xl p-md flex flex-col gap-md">
+<div class="border-b border-outline-variant pb-sm flex items-center justify-between">
+<h3 class="font-title-md text-title-md font-bold text-on-surface">Top Suppliers by P95 Exposure - <span class="text-primary">Logistics Delay</span></h3>
+<span class="material-symbols-outlined text-outline-variant hover:text-on-surface cursor-pointer transition-colors">more_vert</span>
+</div>
+<div class="flex flex-col gap-sm">
+<!-- Bar 1 -->
+<div class="flex items-center gap-md">
+<div class="w-32 font-data-mono text-data-mono text-on-surface-variant truncate text-right">SUP-A-TechCorp</div>
+<div class="flex-grow flex items-center gap-sm">
+<div class="h-6 bar-chart-fill rounded-r-lg" style="width: 100%;"></div>
+<span class="font-data-mono text-data-mono text-on-surface">$14.2M</span>
+</div>
+</div>
+<!-- Bar 2 -->
+<div class="flex items-center gap-md">
+<div class="w-32 font-data-mono text-data-mono text-on-surface-variant truncate text-right">SUP-D-LogiWorks</div>
+<div class="flex-grow flex items-center gap-sm">
+<div class="h-6 bar-chart-fill rounded-r-lg opacity-90" style="width: 85%;"></div>
+<span class="font-data-mono text-data-mono text-on-surface">$12.1M</span>
+</div>
+</div>
+<!-- Bar 3 -->
+<div class="flex items-center gap-md">
+<div class="w-32 font-data-mono text-data-mono text-on-surface-variant truncate text-right">SUP-C-MicroCirc</div>
+<div class="flex-grow flex items-center gap-sm">
+<div class="h-6 bar-chart-fill rounded-r-lg opacity-80" style="width: 65%;"></div>
+<span class="font-data-mono text-data-mono text-on-surface">$9.4M</span>
+</div>
+</div>
+<!-- Bar 4 -->
+<div class="flex items-center gap-md">
+<div class="w-32 font-data-mono text-data-mono text-on-surface-variant truncate text-right">SUP-E-PrimeMat</div>
+<div class="flex-grow flex items-center gap-sm">
+<div class="h-6 bar-chart-fill rounded-r-lg opacity-70" style="width: 45%;"></div>
+<span class="font-data-mono text-data-mono text-on-surface">$6.8M</span>
+</div>
+</div>
+<!-- Bar 5 -->
+<div class="flex items-center gap-md">
+<div class="w-32 font-data-mono text-data-mono text-on-surface-variant truncate text-right">SUP-B-GlobalFab</div>
+<div class="flex-grow flex items-center gap-sm">
+<div class="h-6 bar-chart-fill rounded-r-lg opacity-60" style="width: 30%;"></div>
+<span class="font-data-mono text-data-mono text-on-surface">$4.2M</span>
+</div>
+</div>
+</div>
+</div>
+</main>
+</body></html>
