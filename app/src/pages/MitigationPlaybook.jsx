@@ -144,7 +144,7 @@ export function MitigationPlaybook() {
               <th>Recommended Action</th>
               <th>Action Description</th>
               <th style={{ textAlign: 'right' }}>Action Cost</th>
-              <th style={{ textAlign: 'right' }}>Expected Annual Loss</th>
+              <th style={{ textAlign: 'right' }}>Worst-Case Loss</th>
               <th style={{ textAlign: 'right' }}>Risk Reduction</th>
               <th style={{ textAlign: 'right' }}>ROI ↓</th>
               <th style={{ textAlign: 'right' }}>Payback</th>
@@ -171,7 +171,7 @@ export function MitigationPlaybook() {
                   <td>{r.priority_quadrant ? <RiskBadge quadrant={r.priority_quadrant} /> : '—'}</td>
                   <td className="body-sm" style={{ color: 'var(--on-surface-variant)' }}>{r.dominant_risk_label || dominantRisk(r)}</td>
                   <td><strong>{r.recommended_action}</strong></td>
-                  <td className="body-xs" style={{ color: 'var(--on-surface-variant)', maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={r.action_description}>{r.action_description || '—'}</td>
+                  <td className="body-xs" style={{ color: 'var(--on-surface-variant)', maxWidth: 300 }}>{r.action_description || '—'}</td>
                   <td className="data-mono" style={{ textAlign: 'right' }}>{fmt(r.action_cost ?? r.estimated_cost)}</td>
                   <td className="data-mono" style={{ textAlign: 'right' }}>{fmt(r.expected_annual_loss ?? r.p95_impact)}</td>
                   <td className="data-mono" style={{ textAlign: 'right', color: 'var(--primary)' }}>{fmt(r.risk_reduction)}</td>
@@ -191,7 +191,7 @@ export function MitigationPlaybook() {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
             <h3 className="title-md">Action Cost vs Risk Exposure (Top 5 by ROI)</h3>
             <div style={{ display: 'flex', gap: 12 }}>
-              {[['var(--outline)','Cost'],['#003d5c','P95 Exposure']].map(([color, label]) => (
+              {[['var(--outline)','Cost'],['#003d5c','Worst-Case Loss']].map(([color, label]) => (
                 <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                   <div style={{ width: 12, height: 12, background: color, borderRadius: 2 }} />
                   <span className="label-caps" style={{ color: 'var(--on-surface-variant)' }}>{label}</span>
@@ -251,6 +251,155 @@ export function MitigationPlaybook() {
           </div>
         </div>
       </div>
+
+      {/* 12-Month Campaign Planner */}
+      <CampaignPlanner playbook={playbook} fmt={fmt} />
     </>
+  );
+}
+
+/** 12-Month Campaign Planner — converts playbook into a quarterly execution roadmap */
+function CampaignPlanner({ playbook, fmt }) {
+  if (!playbook || playbook.length === 0) return null;
+
+  // Assign actions to quarters based on priority and ROI
+  const QUARTERS = [
+    { label: 'Q1 · Jan–Mar', subtitle: 'Immediate action — highest risk', color: '#ff6b59', bg: 'rgba(255,107,89,0.06)', border: 'rgba(255,107,89,0.2)' },
+    { label: 'Q2 · Apr–Jun', subtitle: 'High priority — early mitigation', color: '#ffa600', bg: 'rgba(255,166,0,0.06)',  border: 'rgba(255,166,0,0.2)' },
+    { label: 'Q3 · Jul–Sep', subtitle: 'Monitor closely — structured response', color: '#8b91c7', bg: 'rgba(139,145,199,0.06)', border: 'rgba(139,145,199,0.2)' },
+    { label: 'Q4 · Oct–Dec', subtitle: 'Contingency & routine review', color: '#4299e1', bg: 'rgba(66,153,225,0.06)', border: 'rgba(66,153,225,0.2)' },
+  ];
+
+  // Sort by priority then ROI
+  const sorted = [...playbook].sort((a, b) => {
+    const pri = (r) => r.priority_quadrant?.toLowerCase().includes('critical') ? 0
+      : r.priority_quadrant?.toLowerCase().includes('monitor') ? 1
+      : r.priority_quadrant?.toLowerCase().includes('contingency') ? 2
+      : 3;
+    const dp = pri(a) - pri(b);
+    return dp !== 0 ? dp : (b.roi || 0) - (a.roi || 0);
+  });
+
+  // Assign to quarters (round-robin within priority groups)
+  const quarterActions = [[], [], [], []];
+  sorted.forEach((action) => {
+    const prio = action.priority_quadrant?.toLowerCase() || '';
+    const isCrit    = prio.includes('critical');
+    const isMonitor = prio.includes('monitor');
+    const isCont    = prio.includes('contingency');
+
+    if (isCrit) {
+      // Alternate between Q1 and Q2
+      const target = quarterActions[0].length <= quarterActions[1].length ? 0 : 1;
+      if (quarterActions[target].length < 4) quarterActions[target].push(action);
+    } else if (isMonitor) {
+      if (quarterActions[2].length < 4) quarterActions[2].push(action);
+    } else if (isCont) {
+      if (quarterActions[3].length < 4) quarterActions[3].push(action);
+    } else {
+      if (quarterActions[3].length < 4) quarterActions[3].push(action);
+    }
+  });
+
+  const totalBudget = playbook.reduce((s, r) => s + (r.action_cost ?? r.estimated_cost ?? 0), 0);
+  const totalActions = playbook.length;
+
+  const ACTION_ICONS = {
+    'Dual-Sourcing': 'hub', 'Safety Stock': 'inventory',
+    'Geographic': 'language', 'Supplier Development': 'groups', 'Monitoring': 'monitoring',
+  };
+  function getIcon(action) {
+    if (!action) return 'bolt';
+    for (const [k, v] of Object.entries(ACTION_ICONS)) {
+      if (action.includes(k)) return v;
+    }
+    return 'bolt';
+  }
+
+  return (
+    <div style={{ marginTop: 32 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 20 }}>
+        <div>
+          <h3 className="title-md">12-Month Campaign Planner</h3>
+          <p className="body-xs" style={{ color: 'var(--on-surface-variant)', marginTop: 4 }}>
+            Execution roadmap — {totalActions} actions sequenced by priority and ROI. Total budget: <strong style={{ color: 'var(--primary)' }}>{fmt(totalBudget)}</strong>
+          </p>
+        </div>
+        <div style={{ display: 'flex', gap: 16 }}>
+          {QUARTERS.map((q, i) => (
+            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <div style={{ width: 10, height: 10, borderRadius: 2, background: q.color }} />
+              <span style={{ fontSize: 10, color: 'var(--on-surface-variant)', fontWeight: 600 }}>{q.label.split('·')[0].trim()}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16 }}>
+        {QUARTERS.map((q, qi) => (
+          <div
+            key={qi}
+            style={{
+              background: q.bg,
+              border: `1px solid ${q.border}`,
+              borderTop: `3px solid ${q.color}`,
+              borderRadius: 8,
+              overflow: 'hidden',
+            }}
+          >
+            {/* Quarter header */}
+            <div style={{ padding: '12px 16px', borderBottom: `1px solid ${q.border}` }}>
+              <div style={{ fontWeight: 700, fontSize: 13, color: q.color }}>{q.label}</div>
+              <div style={{ fontSize: 11, color: 'var(--on-surface-variant)', marginTop: 2 }}>{q.subtitle}</div>
+              {quarterActions[qi].length > 0 && (
+                <div style={{ fontSize: 10, color: 'var(--on-surface-variant)', marginTop: 6 }}>
+                  {quarterActions[qi].length} action{quarterActions[qi].length !== 1 ? 's' : ''}
+                  &nbsp;·&nbsp;{fmt(quarterActions[qi].reduce((s, r) => s + (r.action_cost ?? r.estimated_cost ?? 0), 0))}
+                </div>
+              )}
+            </div>
+
+            {/* Action cards */}
+            <div style={{ padding: 12, display: 'flex', flexDirection: 'column', gap: 8, minHeight: 120 }}>
+              {quarterActions[qi].length === 0 ? (
+                <div style={{ textAlign: 'center', color: 'var(--outline)', fontSize: 12, padding: '20px 0', fontStyle: 'italic' }}>
+                  No actions scheduled. Shift budget or timeline to pull forward interventions.
+                </div>
+              ) : (
+                quarterActions[qi].map((action, ai) => (
+                  <div
+                    key={ai}
+                    style={{
+                      background: 'var(--surface-container)',
+                      border: '1px solid var(--outline-variant)',
+                      borderRadius: 6,
+                      padding: '8px 10px',
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+                      <span className="material-symbols-outlined" style={{ fontSize: 14, color: q.color, flexShrink: 0, marginTop: 1 }}>
+                        {getIcon(action.recommended_action)}
+                      </span>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--on-surface)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          {action.recommended_action}
+                        </div>
+                        <div style={{ fontSize: 10, color: 'var(--on-surface-variant)', marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          {action.supplier_name}
+                        </div>
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 6, fontSize: 10 }}>
+                      <span style={{ color: 'var(--on-surface-variant)' }}>{fmt(action.action_cost ?? action.estimated_cost)}</span>
+                      <span style={{ color: '#ffa600', fontWeight: 700 }}>ROI {action.roi != null ? action.roi.toFixed(1) + '×' : '—'}</span>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }

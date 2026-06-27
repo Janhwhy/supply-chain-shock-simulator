@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { api } from '../api/client';
 import { LoadingSpinner, ErrorBox } from '../components/LoadingSpinner';
 
@@ -14,20 +14,48 @@ export function ScenarioAnalysis() {
   const [selectedScenario, setSelectedScenario] = useState('port_strike');
   const [simulatedData, setSimulatedData] = useState(null);
   const [simulating, setSimulating] = useState(false);
+  const [backgroundUpdating, setBackgroundUpdating] = useState(false);
   const [error, setError] = useState(null);
+  const [countdown, setCountdown] = useState(10);
 
-  const handleSimulate = async () => {
-    setSimulating(true);
+  const handleSimulate = async (scenarioId, showFullLoader = true) => {
+    if (showFullLoader) {
+      setSimulating(true);
+    } else {
+      setBackgroundUpdating(true);
+    }
     setError(null);
     try {
-      const data = await api.simulation(selectedScenario);
+      const data = await api.simulation(scenarioId);
       setSimulatedData(data);
     } catch (e) {
       setError(e.message);
     } finally {
       setSimulating(false);
+      setBackgroundUpdating(false);
     }
   };
+
+  // Run simulation immediately on selectedScenario change
+  useEffect(() => {
+    handleSimulate(selectedScenario, true);
+    setCountdown(10);
+  }, [selectedScenario]);
+
+  // Set up 10-second auto-simulate timer
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCountdown((prev) => {
+        if (prev <= 1) {
+          handleSimulate(selectedScenario, false);
+          return 10;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [selectedScenario]);
 
   const activeScenarioObj = SCENARIOS.find(s => s.id === selectedScenario);
 
@@ -49,6 +77,61 @@ export function ScenarioAnalysis() {
 
   return (
     <>
+      <style>{`
+        .scenario-column-card {
+          cursor: pointer;
+          border: 1px solid var(--outline-variant);
+          background: var(--surface-container);
+          transition: all 0.2s ease-in-out;
+        }
+        .scenario-column-card:hover {
+          border-color: var(--outline);
+          transform: translateY(-2px);
+          background: var(--surface-container-high);
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
+        .scenario-column-card.active {
+          border: 2px solid var(--primary) !important;
+          background: var(--surface-container-high);
+          box-shadow: 0 0 16px rgba(153, 203, 255, 0.15);
+        }
+        .live-pulse {
+          display: inline-block;
+          width: 8px;
+          height: 8px;
+          border-radius: 50%;
+          background: var(--primary);
+          margin-right: 6px;
+          animation: live-pulse-anim 1.5s infinite ease-in-out;
+        }
+        @keyframes live-pulse-anim {
+          0% { transform: scale(0.9); opacity: 0.6; }
+          50% { transform: scale(1.2); opacity: 1; box-shadow: 0 0 8px var(--primary); }
+          100% { transform: scale(0.9); opacity: 0.6; }
+        }
+        .progress-bar-container {
+          height: 4px;
+          background: var(--surface-container);
+          border-radius: 2px;
+          overflow: hidden;
+          margin-top: 8px;
+          width: 100%;
+        }
+        .progress-bar-fill {
+          height: 100%;
+          background: var(--primary);
+          transition: width 1s linear;
+        }
+        .spin {
+          animation: spin-anim 1s linear infinite;
+          display: inline-block;
+        }
+        @keyframes spin-anim {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+      `}</style>
+
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 24 }}>
         <h2 className="headline-lg">Monte Carlo Disruption Simulator</h2>
         <p className="body-sm" style={{ color: 'var(--on-surface-variant)' }}>
@@ -56,67 +139,58 @@ export function ScenarioAnalysis() {
         </p>
       </div>
 
-      {/* Selector & Simulate Button Panel */}
-      <div className="card card--p" style={{ marginBottom: 24, background: 'var(--surface-container-high)' }}>
-        <h3 className="title-md" style={{ marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span className="material-symbols-outlined" style={{ color: 'var(--primary)' }}>settings_input_component</span>
-          Simulation Configuration
-        </h3>
-        <div style={{ display: 'flex', gap: 16, alignItems: 'flex-end', flexWrap: 'wrap' }}>
-          <div style={{ flex: '1 1 300px' }}>
-            <label className="label-caps" style={{ color: 'var(--on-surface-variant)', display: 'block', marginBottom: 8 }}>Select Disruption Vector</label>
-            <select
-              value={selectedScenario}
-              onChange={e => {
-                setSelectedScenario(e.target.value);
-                setSimulatedData(null); // Clear previous simulation results
+      {/* Scenarios Columns Grid */}
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(5, 1fr)',
+        gap: '16px',
+        marginBottom: '24px'
+      }}>
+        {SCENARIOS.map(s => {
+          const selected = s.id === selectedScenario;
+          return (
+            <div
+              key={s.id}
+              onClick={() => {
+                if (selectedScenario !== s.id) {
+                  setSelectedScenario(s.id);
+                  setSimulatedData(null);
+                }
               }}
+              className={`scenario-column-card ${selected ? 'active' : ''}`}
               style={{
-                width: '100%',
-                background: 'var(--surface-container)',
-                border: '1px solid var(--outline-variant)',
-                color: 'var(--on-surface)',
-                borderRadius: 6,
-                padding: '12px 16px',
-                fontSize: 15,
-                outline: 'none',
-                cursor: 'pointer'
+                display: 'flex',
+                flexDirection: 'column',
+                padding: '16px',
+                borderRadius: '8px',
+                minHeight: '180px',
+                justifyContent: 'space-between',
               }}
             >
-              {SCENARIOS.map(s => (
-                <option key={s.id} value={s.id}>{s.label}</option>
-              ))}
-            </select>
-          </div>
-          <button
-            onClick={handleSimulate}
-            disabled={simulating}
-            style={{
-              background: 'var(--primary)',
-              color: 'var(--on-primary)',
-              border: 'none',
-              borderRadius: 6,
-              padding: '12px 28px',
-              fontSize: 15,
-              fontWeight: 700,
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 8,
-              transition: 'all 0.2s',
-              opacity: simulating ? 0.7 : 1,
-              boxShadow: '0 4px 12px rgba(70, 76, 137, 0.2)'
-            }}
-          >
-            <span className="material-symbols-outlined">{simulating ? 'autorenew' : 'play_arrow'}</span>
-            {simulating ? 'Simulating...' : 'Run Simulation'}
-          </button>
-        </div>
-        {activeScenarioObj && (
-          <p className="body-xs" style={{ color: 'var(--on-surface-variant)', marginTop: 12, fontStyle: 'italic' }}>
-            <strong>Vector Description:</strong> {activeScenarioObj.desc}
-          </p>
-        )}
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                  <span className="material-symbols-outlined" style={{ color: selected ? 'var(--primary)' : 'var(--outline)' }}>
+                    {s.icon}
+                  </span>
+                  <h4 style={{ fontWeight: 600, fontSize: '15px', color: selected ? 'var(--primary)' : 'var(--on-surface)' }}>
+                    {s.label}
+                  </h4>
+                </div>
+                <p style={{ fontSize: '12px', color: 'var(--on-surface-variant)', lineHeight: '1.4' }}>
+                  {s.desc}
+                </p>
+              </div>
+
+              <div style={{ marginTop: '12px' }}>
+                {!selected && (
+                  <span style={{ fontSize: '11px', color: 'var(--outline)', fontWeight: 500 }}>
+                    Click to simulate
+                  </span>
+                )}
+              </div>
+            </div>
+          );
+        })}
       </div>
 
       {error && <ErrorBox message={error} />}
@@ -130,6 +204,46 @@ export function ScenarioAnalysis() {
       {/* Simulation Results Output */}
       {!simulating && simulatedData && (
         <>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <h3 className="title-md" style={{ margin: 0 }}>
+                Simulation Results — <span style={{ color: 'var(--primary)' }}>{activeScenarioObj?.label}</span>
+              </h3>
+              {backgroundUpdating && (
+                <span className="material-symbols-outlined spin" style={{ color: 'var(--primary)', fontSize: 18 }}>
+                  sync
+                </span>
+              )}
+            </div>
+            <button
+              onClick={() => {
+                handleSimulate(selectedScenario, false);
+                setCountdown(10);
+              }}
+              disabled={backgroundUpdating || simulating}
+              style={{
+                background: 'var(--surface-container-high)',
+                border: '1px solid var(--outline-variant)',
+                color: 'var(--on-surface)',
+                borderRadius: 6,
+                padding: '6px 12px',
+                fontSize: 13,
+                fontWeight: 600,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+                transition: 'all 0.2s',
+                opacity: backgroundUpdating ? 0.7 : 1
+              }}
+            >
+              <span className={`material-symbols-outlined ${backgroundUpdating ? 'spin' : ''}`} style={{ fontSize: 16 }}>
+                refresh
+              </span>
+              Manual Refresh
+            </button>
+          </div>
+
           {/* Simulation Summary KPIs */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16, marginBottom: 24 }}>
             <div className="card card--p" style={{ borderLeft: '4px solid var(--primary)' }}>
@@ -189,7 +303,11 @@ export function ScenarioAnalysis() {
             </div>
           </div>
 
+          {/* Monte Carlo Distribution Histogram */}
+          <MonteCarloHistogram data={simulatedData} scenarioLabel={activeScenarioObj?.label} fmt={fmt} />
+
           {/* Detailed Statistics Table */}
+
           <div className="card card--p">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--outline-variant)', paddingBottom: 16, marginBottom: 16 }}>
               <h3 className="title-md">Monte Carlo Distribution Metrics (All Suppliers)</h3>
@@ -232,10 +350,159 @@ export function ScenarioAnalysis() {
           <span className="material-symbols-outlined" style={{ fontSize: 64, color: 'var(--outline)', marginBottom: 16 }}>model_training</span>
           <h3 className="title-lg" style={{ color: 'var(--on-surface)', marginBottom: 8 }}>No Active Simulation</h3>
           <p className="body-md" style={{ color: 'var(--on-surface-variant)', textAlign: 'center', maxWidth: 400 }}>
-            Select a disruption vector above and click <strong>"Run Simulation"</strong> to execute the Monte Carlo risk analysis engine.
+            Select a disruption vector card above to execute the Monte Carlo risk analysis engine automatically.
           </p>
         </div>
       )}
     </>
+  );
+}
+
+/** Monte Carlo distribution histogram — buckets supplier P95 values and renders bell-curve SVG */
+function MonteCarloHistogram({ data, scenarioLabel, fmt }) {
+  if (!data || data.length === 0) return null;
+
+  const BINS = 20;
+  const W = 560, H = 180, PAD = { top: 16, right: 24, bottom: 36, left: 52 };
+  const innerW = W - PAD.left - PAD.right;
+  const innerH = H - PAD.top - PAD.bottom;
+
+  const values = data.map(r => r.p95_impact || 0).filter(v => v > 0);
+  if (values.length === 0) return null;
+
+  const minV = Math.min(...values);
+  const maxV = Math.max(...values);
+  const range = maxV - minV || 1;
+  const binWidth = range / BINS;
+
+  const counts = Array(BINS).fill(0);
+  values.forEach(v => {
+    const idx = Math.min(BINS - 1, Math.floor((v - minV) / binWidth));
+    counts[idx]++;
+  });
+  const maxCount = Math.max(...counts, 1);
+
+  // P50 and P95 of the cross-supplier P95 distribution
+  const sorted = [...values].sort((a, b) => a - b);
+  const p50 = sorted[Math.floor(sorted.length * 0.50)];
+  const p95 = sorted[Math.floor(sorted.length * 0.95)];
+
+  function xScale(v) {
+    return PAD.left + ((v - minV) / range) * innerW;
+  }
+  function yScale(count) {
+    return PAD.top + innerH - (count / maxCount) * innerH;
+  }
+
+  // Smooth curve points through bin centers
+  const curvePoints = counts.map((c, i) => {
+    const bx = xScale(minV + (i + 0.5) * binWidth);
+    const by = yScale(c);
+    return `${bx},${by}`;
+  });
+  const pathD = `M ${curvePoints.join(' L ')}`;
+
+  // X-axis ticks
+  const ticks = 5;
+  const xTicks = Array.from({ length: ticks + 1 }, (_, i) => minV + (range / ticks) * i);
+
+  return (
+    <div className="card card--p" style={{ marginBottom: 24 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--outline-variant)', paddingBottom: 16, marginBottom: 20 }}>
+        <div>
+          <h3 className="title-md">
+            Monte Carlo Distribution — <span style={{ color: 'var(--primary)' }}>{scenarioLabel}</span>
+          </h3>
+          <p className="body-xs" style={{ color: 'var(--on-surface-variant)', marginTop: 4 }}>
+            Frequency of P95 worst-case loss values across {values.length} suppliers. P50 = median exposure, P95 = portfolio tail risk threshold.
+          </p>
+        </div>
+        <div style={{ display: 'flex', gap: 16, alignItems: 'center', flexShrink: 0 }}>
+          {[['P50 Median', '#4299e1', p50], ['P95 Tail Risk', '#ff6b59', p95]].map(([label, color, val]) => (
+            <div key={label} style={{ textAlign: 'right' }}>
+              <div style={{ fontSize: 10, color: 'var(--on-surface-variant)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{label}</div>
+              <div style={{ fontWeight: 700, color, fontSize: 15 }}>{fmt(val)}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div style={{ overflowX: 'auto' }}>
+        <svg viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', maxWidth: W, display: 'block', margin: '0 auto' }}>
+          {/* Grid lines */}
+          {[0.25, 0.5, 0.75, 1].map(frac => {
+            const y = PAD.top + innerH * (1 - frac);
+            return (
+              <line key={frac} x1={PAD.left} y1={y} x2={W - PAD.right} y2={y}
+                stroke="var(--outline-variant)" strokeWidth={0.5} strokeDasharray="3 4" />
+            );
+          })}
+
+          {/* Histogram bars */}
+          {counts.map((c, i) => {
+            const bx = PAD.left + (i / BINS) * innerW;
+            const bw = (innerW / BINS) - 1;
+            const bh = (c / maxCount) * innerH;
+            const by = PAD.top + innerH - bh;
+            const barColor = (minV + (i + 0.5) * binWidth) >= p95 ? 'rgba(255,107,89,0.65)' : 'rgba(70,76,137,0.6)';
+            return (
+              <rect key={i} x={bx} y={by} width={bw} height={bh}
+                fill={barColor} rx={2} />
+            );
+          })}
+
+          {/* Smooth curve overlay */}
+          <polyline points={curvePoints.join(' ')} fill="none"
+            stroke="rgba(153,203,255,0.7)" strokeWidth={2} strokeLinejoin="round" />
+
+          {/* P50 marker */}
+          <line x1={xScale(p50)} y1={PAD.top} x2={xScale(p50)} y2={PAD.top + innerH}
+            stroke="#4299e1" strokeWidth={1.5} strokeDasharray="4 3" />
+          <text x={xScale(p50) + 4} y={PAD.top + 12} fill="#4299e1" fontSize={9} fontWeight={700}>P50</text>
+
+          {/* P95 marker */}
+          <line x1={xScale(p95)} y1={PAD.top} x2={xScale(p95)} y2={PAD.top + innerH}
+            stroke="#ff6b59" strokeWidth={1.5} strokeDasharray="4 3" />
+          <text x={xScale(p95) + 4} y={PAD.top + 12} fill="#ff6b59" fontSize={9} fontWeight={700}>P95</text>
+
+          {/* Shaded P95 tail area */}
+          {(() => {
+            const x1 = xScale(p95);
+            const x2 = W - PAD.right;
+            return (
+              <rect x={x1} y={PAD.top} width={Math.max(0, x2 - x1)} height={innerH}
+                fill="rgba(255,107,89,0.06)" />
+            );
+          })()}
+
+          {/* X-axis */}
+          <line x1={PAD.left} y1={PAD.top + innerH} x2={W - PAD.right} y2={PAD.top + innerH}
+            stroke="var(--outline-variant)" strokeWidth={1} />
+          {xTicks.map((v, i) => (
+            <g key={i}>
+              <line x1={xScale(v)} y1={PAD.top + innerH} x2={xScale(v)} y2={PAD.top + innerH + 4}
+                stroke="var(--outline-variant)" strokeWidth={1} />
+              <text x={xScale(v)} y={PAD.top + innerH + 14} textAnchor="middle"
+                fill="var(--on-surface-variant)" fontSize={8.5}>
+                {fmt(v)}
+              </text>
+            </g>
+          ))}
+
+          {/* Y-axis label */}
+          <text x={14} y={PAD.top + innerH / 2} textAnchor="middle"
+            fill="var(--on-surface-variant)" fontSize={9}
+            transform={`rotate(-90, 14, ${PAD.top + innerH / 2})`}>
+            # Suppliers
+          </text>
+
+          {/* X-axis label */}
+          <text x={W / 2} y={H - 4} textAnchor="middle"
+            fill="var(--on-surface-variant)" fontSize={9}>
+            Worst-Case Loss (P95) →
+          </text>
+        </svg>
+      </div>
+    </div>
   );
 }

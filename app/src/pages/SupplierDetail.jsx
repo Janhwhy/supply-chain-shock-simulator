@@ -82,17 +82,10 @@ export function SupplierDetail() {
             style={{ padding: '8px 24px', borderRadius: 4, border: '1px solid #003d5c', color: '#003d5c', fontSize: 14, fontWeight: 600, transition: 'all 0.2s' }}
           >Export Report</button>
           <button
-            onClick={() => alert('Contact Lead feature coming soon')}
+            onClick={() => window.open(`mailto:contact@${data.supplier_name?.toLowerCase().replace(/[^a-z0-9]/g, '')}.com?subject=Risk%20Mitigation%20Discussion`)}
             style={{ padding: '8px 24px', borderRadius: 4, background: '#464c89', color: 'white', fontSize: 14, fontWeight: 600 }}
           >Contact Lead</button>
         </div>
-      </div>
-
-      {/* Risk Gauges */}
-      <div className="gauges-grid" style={{ marginBottom: 24 }}>
-        {GAUGE_DEFS.map(({ key, label, color }) => (
-          <ResilienceGauge key={key} label={label} value={scores[key]} color={color} />
-        ))}
       </div>
 
       {/* Score Interpretation Card */}
@@ -123,11 +116,18 @@ export function SupplierDetail() {
         </div>
       )}
 
+      {/* Risk Gauges */}
+      <div className="gauges-grid" style={{ marginBottom: 24 }}>
+        {GAUGE_DEFS.map(({ key, label, color }) => (
+          <ResilienceGauge key={key} label={label} value={scores[key]} color={color} />
+        ))}
+      </div>
+
       {/* Simulation Chart + Recommended Action */}
       <div className="detail-grid">
         {/* Simulation Results */}
         <div className="card card--p">
-          <h3 className="title-md" style={{ marginBottom: 16 }}>Simulation Results — P50 vs P95 Impact</h3>
+          <h3 className="title-md" style={{ marginBottom: 16 }}>Simulation Results — Median vs Worst-Case Loss</h3>
           <div className="sim-chart">
             {simResults.map((r, i) => {
               const name = Object.values(SCENARIO_NAMES).find(n => r.scenario_name?.includes(n.split(' ')[0])) || r.scenario_name;
@@ -136,8 +136,8 @@ export function SupplierDetail() {
               return (
                 <div key={i} className="sim-bar-group">
                   <div className="sim-bar-pair">
-                    <div className="sim-bar" style={{ height: `${p50h}%`, background: '#464c89', opacity: 0.85 }} title={`P50: ${fmt(r.p50_impact)}`} />
-                    <div className="sim-bar" style={{ height: `${p95h}%`, background: '#ff6b59' }} title={`P95: ${fmt(r.p95_impact)}`} />
+                    <div className="sim-bar" style={{ height: `${p50h}%`, background: '#464c89', opacity: 0.85 }} title={`Median Loss: ${fmt(r.p50_impact)}`} />
+                    <div className="sim-bar" style={{ height: `${p95h}%`, background: '#ff6b59' }} title={`Worst-Case Loss: ${fmt(r.p95_impact)}`} />
                   </div>
                   <span className="sim-label">{r.scenario_name?.split(' ').slice(0, 2).join(' ') || `S${i+1}`}</span>
                 </div>
@@ -145,7 +145,7 @@ export function SupplierDetail() {
             })}
           </div>
           <div style={{ display: 'flex', justifyContent: 'center', gap: 24, marginTop: 8 }}>
-            {[['#464c89','P50 Impact'],['#ff6b59','P95 Impact']].map(([color, label]) => (
+            {[['#464c89','Median Loss'],['#ff6b59','Worst-Case Loss']].map(([color, label]) => (
               <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                 <div style={{ width: 12, height: 12, background: color, borderRadius: 2, opacity: color === '#464c89' ? 0.85 : 1 }} />
                 <span className="data-mono" style={{ color: 'var(--on-surface-variant)' }}>{label}</span>
@@ -164,7 +164,7 @@ export function SupplierDetail() {
                     <th style={{ textAlign: 'right' }}>Mean Impact</th>
                     <th style={{ textAlign: 'right' }}>Std Dev</th>
                     <th style={{ textAlign: 'right' }}>Skewness</th>
-                    <th style={{ textAlign: 'right' }}>Var Ratio</th>
+                    <th style={{ textAlign: 'right' }}>Volatility Ratio</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -195,7 +195,7 @@ export function SupplierDetail() {
                   {[
                     ['Scenario', playbook.scenario],
                     ['Estimated Cost', fmt(playbook.estimated_cost)],
-                    ['P95 Expected Loss', fmt(playbook.p95_impact)],
+                    ['Worst-Case Loss', fmt(playbook.p95_impact)],
                     ['ROI', `${(playbook.roi || 0).toFixed(2)}×`],
                   ].map(([label, value]) => (
                     <div key={label} className="action-card__row">
@@ -215,7 +215,7 @@ export function SupplierDetail() {
             </div>
           ) : (
             <div style={{ color: 'var(--on-surface-variant)', fontSize: 14, textAlign: 'center', padding: '40px 0' }}>
-              No playbook entry for this supplier.
+              No playbook entry for this supplier. Consider generating a custom mitigation plan if they are mission-critical.
             </div>
           )}
         </div>

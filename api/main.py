@@ -946,20 +946,70 @@ def get_critical_suppliers() -> list[dict]:
 @app.get("/api/centrality", tags=["Centrality"])
 def get_centrality() -> list[dict]:
     """
-    Returns supplier centrality metrics.
+    Returns supplier centrality metrics computed live from the dependency graph.
+
+    The supplier-product graph is bipartite, so betweenness/closeness on the
+    raw graph are always 0.  We project onto a supplier-only graph where two
+    suppliers share an edge if they co-supply at least one product, then
+    compute all three centrality measures on that projection.
     """
     try:
-        df = read_table("supplier_centrality_metrics")
-        df_sup = read_table("suppliers")[["supplier_id", "supplier_name"]]
-        df = df.merge(df_sup, on="supplier_id", how="left")
-        # Apply very tiny wiggle to show topological sensitivity is active
-        if not df.empty:
-            for col in ["degree_centrality", "betweenness_centrality", "closeness_centrality", "pagerank"]:
-                if col in df.columns:
-                    df[col] = df[col] * np.random.uniform(0.995, 1.005, size=len(df))
-        return _df_to_records(df)
+        import networkx as nx
+        from networkx.algorithms import bipartite
+
+        df_sup  = read_table("suppliers")
+        df_prod = read_table("products")
+        df_rel  = read_table("supply_relationships")
+
+        G = build_dependency_graph(df_rel, df_sup, df_prod)
+        df_pr = compute_pagerank(G)
+        pr_map = df_pr.set_index("node_id")["pagerank_score"].to_dict()
+
+        # Partition by type
+        sup_nodes  = [n for n, d in G.nodes(data=True) if d.get("type") == "supplier"]
+        prod_nodes = [n for n, d in G.nodes(data=True) if d.get("type") == "product"]
+
+        # Build undirected bipartite graph for projection
+        B = nx.Graph()
+        B.add_nodes_from(sup_nodes,  bipartite=0)
+        B.add_nodes_from(prod_nodes, bipartite=1)
+        for u, v in G.edges():
+            B.add_edge(u, v)
+
+        # Supplier co-supply projection: edge exists if two suppliers share a product
+        proj = bipartite.weighted_projected_graph(B, sup_nodes)
+
+        # Centrality measures on the projected graph
+        deg = nx.degree_centrality(proj)
+        n   = len(proj)
+        bet = nx.betweenness_centrality(proj, k=min(50, n), normalized=True) if n > 2 else {}
+        clo = nx.closeness_centrality(proj)
+
+        sup_name_map = dict(zip(df_sup["supplier_id"], df_sup["supplier_name"]))
+
+        results = []
+        for node_id in sup_nodes:
+            # node_id is like "S_1" — extract integer supplier_id
+            try:
+                s_id = int(node_id.split("_")[1])
+            except (IndexError, ValueError):
+                s_id = None
+
+            results.append({
+                "node_id":                node_id,
+                "supplier_id":            s_id,
+                "supplier_name":          sup_name_map.get(s_id, node_id),
+                "degree_centrality":      round(float(deg.get(node_id, 0.0)), 6),
+                "betweenness_centrality": round(float(bet.get(node_id, 0.0)), 6),
+                "closeness_centrality":   round(float(clo.get(node_id, 0.0)), 6),
+                "pagerank":               round(float(pr_map.get(node_id, 0.0)), 6),
+            })
+
+        results.sort(key=lambda r: r["degree_centrality"], reverse=True)
+        return results
+
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"Database error: {exc}") from exc
+        raise HTTPException(status_code=500, detail=f"Centrality computation error: {exc}") from exc
 
 
 @app.get("/api/sensitivity", tags=["Sensitivity"])

@@ -84,23 +84,35 @@ export function Relationships() {
 
       {/* KPI Cards */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16, marginBottom: 24 }}>
-        <div className="card card--p" style={{ borderLeft: '4px solid var(--primary)' }}>
-          <div className="label-caps" style={{ color: 'var(--on-surface-variant)' }}>Active Connections</div>
+        <div className="card card--p" style={{ borderLeft: '4px solid var(--primary)' }} title="Total number of supplier-to-product supply paths active in the network.">
+          <div className="label-caps" style={{ color: 'var(--on-surface-variant)', display: 'flex', alignItems: 'center', gap: 4 }}>
+            Active Connections
+            <span className="material-symbols-outlined" style={{fontSize: 14, cursor: 'help'}}>info</span>
+          </div>
           <div className="display-sm" style={{ margin: '8px 0', fontWeight: 700 }}>{totalRels}</div>
           <div className="body-xs" style={{ color: 'var(--on-surface-variant)' }}>Total supplier-to-product links</div>
         </div>
-        <div className="card card--p" style={{ borderLeft: '4px solid #ff6b59' }}>
-          <div className="label-caps" style={{ color: 'var(--on-surface-variant)' }}>Sole-Source Links</div>
+        <div className="card card--p" style={{ borderLeft: '4px solid #ff6b59' }} title="Number of products that are supplied by only one supplier.">
+          <div className="label-caps" style={{ color: 'var(--on-surface-variant)', display: 'flex', alignItems: 'center', gap: 4 }}>
+            Sole-Source Links
+            <span className="material-symbols-outlined" style={{fontSize: 14, cursor: 'help'}}>info</span>
+          </div>
           <div className="display-sm" style={{ margin: '8px 0', fontWeight: 700 }}>{soleSourceCount}</div>
           <div className="body-xs" style={{ color: 'var(--on-surface-variant)' }}>Single-point vulnerability nodes</div>
         </div>
-        <div className="card card--p" style={{ borderLeft: '4px solid #ffa600' }}>
-          <div className="label-caps" style={{ color: 'var(--on-surface-variant)' }}>Average Supply Share</div>
+        <div className="card card--p" style={{ borderLeft: '4px solid #ffa600' }} title="Average percentage of a product's volume that is sourced through a single link.">
+          <div className="label-caps" style={{ color: 'var(--on-surface-variant)', display: 'flex', alignItems: 'center', gap: 4 }}>
+            Average Supply Share
+            <span className="material-symbols-outlined" style={{fontSize: 14, cursor: 'help'}}>info</span>
+          </div>
           <div className="display-sm" style={{ margin: '8px 0', fontWeight: 700 }}>{(avgShare * 100).toFixed(1)}%</div>
           <div className="body-xs" style={{ color: 'var(--on-surface-variant)' }}>Mean volume allocation</div>
         </div>
-        <div className="card card--p" style={{ borderLeft: '4px solid #8b91c7' }}>
-          <div className="label-caps" style={{ color: 'var(--on-surface-variant)' }}>Sourcing Suppliers</div>
+        <div className="card card--p" style={{ borderLeft: '4px solid #8b91c7' }} title="Total number of distinct suppliers providing goods to the network.">
+          <div className="label-caps" style={{ color: 'var(--on-surface-variant)', display: 'flex', alignItems: 'center', gap: 4 }}>
+            Sourcing Suppliers
+            <span className="material-symbols-outlined" style={{fontSize: 14, cursor: 'help'}}>info</span>
+          </div>
           <div className="display-sm" style={{ margin: '8px 0', fontWeight: 700 }}>{uniqueSuppliers}</div>
           <div className="body-xs" style={{ color: 'var(--on-surface-variant)' }}>Suppliers with active relations</div>
         </div>
@@ -158,7 +170,7 @@ export function Relationships() {
           <option value="no">Multi-Source Only</option>
         </select>
         <span className="label-caps" style={{ color: 'var(--on-surface-variant)', marginLeft: 'auto' }}>
-          {filtered.length} connections showing
+          {filtered.length} connections showing {filtered.length === 0 && '— Try adjusting your filters'}
         </span>
       </div>
 
@@ -167,9 +179,7 @@ export function Relationships() {
         <table className="data-table" style={{ minWidth: 800 }}>
           <thead>
             <tr>
-              <th style={{ cursor: 'pointer' }} onClick={() => toggleSort('relationship_id')}>
-                Rel ID {sortKey === 'relationship_id' ? (sortDir === -1 ? '↓' : '↑') : ''}
-              </th>
+
               <th style={{ cursor: 'pointer' }} onClick={() => toggleSort('supplier_name')}>
                 Supplier Name {sortKey === 'supplier_name' ? (sortDir === -1 ? '↓' : '↑') : ''}
               </th>
@@ -187,7 +197,7 @@ export function Relationships() {
           <tbody>
             {filtered.map(r => (
               <tr key={r.relationship_id}>
-                <td className="data-mono" style={{ color: 'var(--on-surface-variant)' }}>#{r.relationship_id}</td>
+
                 <td><strong style={{ color: 'var(--on-surface)' }}>{r.supplier_name}</strong></td>
                 <td>
                   <div style={{ display: 'flex', flexDirection: 'column' }}>
@@ -240,6 +250,13 @@ export function Relationships() {
                 </td>
               </tr>
             ))}
+            {filtered.length === 0 && (
+              <tr>
+                <td colSpan="4" style={{ textAlign: 'center', padding: '40px 0', color: 'var(--on-surface-variant)' }}>
+                  No relationships match your search. Try clearing your filters or searching for a different supplier.
+                </td>
+              </tr>
+            )}
           </tbody>
         </table>
       </div>

@@ -1,22 +1,14 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
+import ForceGraph2D from 'react-force-graph-2d';
 import { api } from '../api/client';
 import { LoadingSpinner, ErrorBox } from '../components/LoadingSpinner';
 
-const CRIT_COLORS = ['#464c89', '#4299e1', '#ffa600', '#ff6b59', '#003d5c', '#954e9b', '#8a919c'];
-
-function getNodeColor(node, criticalIds) {
-  if (node.type === 'product') return '#003d5c';
-  if (criticalIds.has(node.id)) return '#ff6b59';
-  return '#464c89';
-}
 
 export function NetworkOverview() {
   const [graphData, setGraphData] = useState(null);
   const [centralityData, setCentralityData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [hoveredNode, setHoveredNode] = useState(null);
-  const canvasRef = useRef(null);
 
   useEffect(() => {
     Promise.all([api.graph(), api.centrality()])
@@ -62,9 +54,9 @@ export function NetworkOverview() {
   const geoColors = ['#464c89', '#003d5c', '#ffa600', '#ff6b59', '#954e9b', '#4299e1'];
 
   function critBand(score) {
-    if (score > 0.8) return { label: 'L1-RED', color: '#ff6b59', text: 'white' };
-    if (score > 0.5) return { label: 'L2-ORG', color: '#ffa600', text: 'black' };
-    return { label: 'L3-YLW', color: '#464c89', text: 'white' };
+    if (score > 0.8) return { label: 'Critical', color: '#ff6b59', text: 'white' };
+    if (score > 0.5) return { label: 'High', color: '#ffa600', text: 'black' };
+    return { label: 'Standard', color: '#464c89', text: 'white' };
   }
 
   return (
@@ -237,199 +229,203 @@ export function NetworkOverview() {
   );
 }
 
-/** Simple D3-style SVG force graph */
+/** Force-directed graph using react-force-graph-2d */
 function NetworkGraph({ nodes, edges, criticalIds }) {
-  const [positions, setPositions] = useState({});
-  const svgRef = useRef(null);
-  const [dims, setDims] = useState({ w: 600, h: 400 });
+  const fgRef = useRef();
+  const containerRef = useRef();
+  const [dims, setDims] = useState({ w: 600, h: 480 });
+  const [tooltip, setTooltip] = useState(null); // { node, x, y }
 
+  // Track container size
   useEffect(() => {
-    if (!svgRef.current) return;
+    if (!containerRef.current) return;
     const ro = new ResizeObserver(entries => {
-      for (const entry of entries) {
-        setDims({ w: entry.contentRect.width, h: entry.contentRect.height });
+      for (const e of entries) {
+        setDims({ w: e.contentRect.width, h: e.contentRect.height });
       }
     });
-    ro.observe(svgRef.current.parentElement);
+    ro.observe(containerRef.current);
     return () => ro.disconnect();
   }, []);
 
+  // Zoom to fit after initial layout settles
   useEffect(() => {
-    if (!nodes.length) return;
-    
-    const cx = dims.w / 2;
-    const cy = dims.h / 2;
-    
-    // 1. Initialize random positions near the center with some jitter
-    let pos = {};
-    nodes.forEach(n => {
-      pos[n.node_id] = {
-        x: cx + (Math.random() - 0.5) * (dims.w * 0.3),
-        y: cy + (Math.random() - 0.5) * (dims.h * 0.3)
-      };
-    });
+    if (!fgRef.current) return;
+    const t = setTimeout(() => fgRef.current.zoomToFit(400, 40), 800);
+    return () => clearTimeout(t);
+  }, [nodes, edges]);
 
-    // Sort edges by weight to get the primary structural skeleton
-    const topEdges = [...edges].sort((a, b) => b.weight - a.weight).slice(0, 50);
+  // Build graph data — react-force-graph-2d uses { nodes, links }
+  // and requires an `id` field on nodes and `source`/`target` on links
+  const graphData = {
+    nodes: nodes.map(n => ({
+      id: n.node_id,
+      name: n.name,
+      type: n.type,
+      country: n.country,
+      tier: n.tier,
+      pagerank: n.pagerank_score || 0,
+      isCritical: criticalIds.has(n.node_id),
+    })),
+    links: edges.map(e => ({
+      source: e.source,
+      target: e.target,
+      weight: e.weight || 0.5,
+    })),
+  };
 
-    // 2. Run force-directed physics simulation steps
-    const iterations = 150;
-    const k = Math.sqrt((dims.w * dims.h) / (nodes.length || 1)) * 0.65; // optimal distance
-    
-    const c_rep = k * k * 0.85; // repulsion constant
-    const c_att = 0.04;        // attraction constant
-    const c_grav = 0.05;       // gravity constant pulling to center
-    const damp = 0.80;         // damping factor
+  // Node appearance
+  const nodeCanvasObject = useCallback((node, ctx, globalScale) => {
+    const isCritical = node.isCritical;
+    const isProduct = node.type === 'product';
+    const r = isProduct ? 4 : Math.max(4, 4 + node.pagerank * 160);
+    const color = isProduct ? '#003d5c' : isCritical ? '#ff6b59' : '#464c89';
 
-    let currentPos = { ...pos };
-    
-    for (let step = 0; step < iterations; step++) {
-      let forces = {};
-      nodes.forEach(n => { forces[n.node_id] = { fx: 0, fy: 0 }; });
-
-      // Repulsion between all nodes (prevent overlapping)
-      for (let i = 0; i < nodes.length; i++) {
-        const u = nodes[i].node_id;
-        const posU = currentPos[u];
-        for (let j = i + 1; j < nodes.length; j++) {
-          const v = nodes[j].node_id;
-          const posV = currentPos[v];
-          if (!posU || !posV) continue;
-          
-          const dx = posU.x - posV.x;
-          const dy = posU.y - posV.y;
-          const distSq = dx * dx + dy * dy + 1e-4;
-          const dist = Math.sqrt(distSq);
-          
-          if (dist < 220) { // repulsion range
-            const f = c_rep / distSq;
-            const fx = (dx / dist) * f;
-            const fy = (dy / dist) * f;
-            
-            forces[u].fx += fx;
-            forces[u].fy += fy;
-            forces[v].fx -= fx;
-            forces[v].fy -= fy;
-          }
-        }
-      }
-
-      // Attraction along connected edges
-      topEdges.forEach(e => {
-        const u = e.source;
-        const v = e.target;
-        const posU = currentPos[u];
-        const posV = currentPos[v];
-        if (!posU || !posV) return;
-
-        const dx = posU.x - posV.x;
-        const dy = posU.y - posV.y;
-        const dist = Math.sqrt(dx * dx + dy * dy) + 1e-4;
-        
-        // Spring pull
-        const f = c_att * (dist - k);
-        const fx = (dx / dist) * f;
-        const fy = (dy / dist) * f;
-        
-        forces[u].fx -= fx;
-        forces[u].fy -= fy;
-        forces[v].fx += fx;
-        forces[v].fy += fy;
-      });
-
-      // Gravity force pulling towards the canvas center
-      nodes.forEach(n => {
-        const u = n.node_id;
-        const posU = currentPos[u];
-        if (!posU) return;
-        const dx = cx - posU.x;
-        const dy = cy - posU.y;
-        
-        forces[u].fx += dx * c_grav;
-        forces[u].fy += dy * c_grav;
-      });
-
-      // Update positions with a speed limit (damping)
-      nodes.forEach(n => {
-        const u = n.node_id;
-        const force = forces[u];
-        if (!force || !currentPos[u]) return;
-        
-        const moveLimit = 15;
-        let mx = force.fx * damp;
-        let my = force.fy * damp;
-        
-        const moveDist = Math.sqrt(mx * mx + my * my);
-        if (moveDist > moveLimit) {
-          mx = (mx / moveDist) * moveLimit;
-          my = (my / moveDist) * moveLimit;
-        }
-
-        currentPos[u].x += mx;
-        currentPos[u].y += my;
-
-        // Keep inside svg boundaries
-        currentPos[u].x = Math.max(30, Math.min(dims.w - 30, currentPos[u].x));
-        currentPos[u].y = Math.max(30, Math.min(dims.h - 30, currentPos[u].y));
-      });
+    // Glow for critical nodes
+    if (isCritical) {
+      ctx.shadowColor = '#ff6b59';
+      ctx.shadowBlur = 12;
     }
 
-    setPositions(currentPos);
-  }, [nodes, edges, dims]);
+    ctx.beginPath();
+    ctx.arc(node.x, node.y, r, 0, 2 * Math.PI);
+    ctx.fillStyle = color;
+    ctx.globalAlpha = isProduct ? 0.75 : 0.95;
+    ctx.fill();
+    ctx.globalAlpha = 1;
+    ctx.shadowBlur = 0;
 
-  const supplierNodes = nodes.filter(n => n.type === 'supplier');
-  const productNodes  = nodes.filter(n => n.type === 'product');
+    // Label for critical nodes or when zoomed in enough
+    if (isCritical || globalScale > 2.5) {
+      ctx.font = `${Math.max(4, 10 / globalScale)}px Inter, sans-serif`;
+      ctx.fillStyle = '#e2e8f0';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(node.name?.split(' ')[0] || '', node.x, node.y + r + 6 / globalScale);
+    }
+  }, []);
 
-  // Only render top-30 edges by weight for clarity
-  const visibleEdges = [...edges].sort((a, b) => b.weight - a.weight).slice(0, 40);
+  const nodeRelSize = 1;
+
+  const handleNodeHover = useCallback((node, prevNode) => {
+    if (node) {
+      setTooltip({ node });
+    } else {
+      setTooltip(null);
+    }
+  }, []);
+
+  const handleNodeClick = useCallback((node) => {
+    // Zoom in on clicked node
+    fgRef.current.centerAt(node.x, node.y, 600);
+    fgRef.current.zoom(4, 600);
+  }, []);
 
   return (
-    <div style={{ flex: 1, overflow: 'hidden', position: 'relative' }} ref={svgRef}>
-      <svg width="100%" height="100%" style={{ display: 'block' }}>
-        <defs>
-          <filter id="glow-red">
-            <feGaussianBlur stdDeviation="3" result="blur" />
-            <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
-          </filter>
-        </defs>
-        {/* Edges */}
-        {visibleEdges.map((e, i) => {
-          const s = positions[e.source], t = positions[e.target];
-          if (!s || !t) return null;
-          return (
-            <line key={i} x1={s.x} y1={s.y} x2={t.x} y2={t.y}
-              stroke="#404751" strokeWidth={Math.max(0.5, e.weight * 3)} strokeOpacity={0.5} />
-          );
-        })}
-        {/* Product nodes */}
-        {productNodes.map(n => {
-          const p = positions[n.node_id];
-          if (!p) return null;
-          return <circle key={n.node_id} cx={p.x} cy={p.y} r={5} fill="#003d5c" opacity={0.7}><title>{n.name}</title></circle>;
-        })}
-        {/* Supplier nodes */}
-        {supplierNodes.map(n => {
-          const p = positions[n.node_id];
-          if (!p) return null;
-          const isCrit = criticalIds.has(n.node_id);
-          const r = 6 + (n.pagerank_score || 0) * 20;
-          const color = isCrit ? '#ff6b59' : '#464c89';
-          return (
-            <circle key={n.node_id} cx={p.x} cy={p.y} r={r}
-              fill={color} filter={isCrit ? 'url(#glow-red)' : undefined} opacity={0.9}
-              style={{ cursor: 'pointer' }}>
-              <title>{n.name} (PageRank: {(n.pagerank_score||0).toFixed(3)})</title>
-            </circle>
-          );
-        })}
-      </svg>
-      {/* Zoom controls */}
-      <div style={{ position: 'absolute', bottom: 16, right: 16, background: 'rgba(36,49,70,0.6)', backdropFilter: 'blur(12px)', border: '1px solid var(--outline-variant)', borderRadius: 4, display: 'flex', flexDirection: 'column' }}>
-        {['zoom_in','zoom_out','center_focus_strong'].map(icon => (
-          <button key={icon} style={{ width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--on-surface)', borderTop: icon !== 'zoom_in' ? '1px solid var(--outline-variant)' : 'none' }}>
+    <div ref={containerRef} style={{ flex: 1, overflow: 'hidden', position: 'relative', background: 'var(--surface-container-low)' }}>
+      <ForceGraph2D
+        ref={fgRef}
+        width={dims.w}
+        height={dims.h}
+        graphData={graphData}
+        backgroundColor="transparent"
+        nodeCanvasObject={nodeCanvasObject}
+        nodeRelSize={nodeRelSize}
+        nodePointerAreaPaint={(node, color, ctx) => {
+          const r = node.type === 'product' ? 4 : Math.max(4, 4 + node.pagerank * 160);
+          ctx.beginPath();
+          ctx.arc(node.x, node.y, r + 3, 0, 2 * Math.PI);
+          ctx.fillStyle = color;
+          ctx.fill();
+        }}
+        linkColor={() => 'rgba(100, 116, 139, 0.35)'}
+        linkWidth={link => Math.max(0.4, link.weight * 2.5)}
+        linkDirectionalParticles={2}
+        linkDirectionalParticleWidth={link => Math.max(0.5, link.weight * 2)}
+        linkDirectionalParticleColor={() => 'rgba(70, 76, 137, 0.6)'}
+        onNodeHover={handleNodeHover}
+        onNodeClick={handleNodeClick}
+        enableNodeDrag={true}
+        enableZoomInteraction={true}
+        enablePanInteraction={true}
+        cooldownTicks={120}
+        d3AlphaDecay={0.02}
+        d3VelocityDecay={0.3}
+      />
+
+      {/* Hover tooltip */}
+      {tooltip && (
+        <div style={{
+          position: 'absolute',
+          top: 16,
+          left: 16,
+          background: 'rgba(16, 20, 24, 0.92)',
+          backdropFilter: 'blur(12px)',
+          border: '1px solid var(--outline-variant)',
+          borderRadius: 8,
+          padding: '10px 14px',
+          pointerEvents: 'none',
+          zIndex: 10,
+          minWidth: 180,
+        }}>
+          <div style={{ fontWeight: 700, fontSize: 13, color: tooltip.node.isCritical ? '#ff6b59' : 'var(--on-surface)', marginBottom: 6 }}>
+            {tooltip.node.name}
+          </div>
+          {[
+            ['Type', tooltip.node.type === 'product' ? 'Product' : 'Supplier'],
+            ...(tooltip.node.type === 'supplier' ? [
+              ['Country', tooltip.node.country || '—'],
+              ['Tier', tooltip.node.tier != null ? `Tier ${tooltip.node.tier}` : '—'],
+              ['Dependency Score', tooltip.node.pagerank.toFixed(4)],
+            ] : []),
+          ].map(([label, val]) => (
+            <div key={label} style={{ display: 'flex', justifyContent: 'space-between', gap: 16, fontSize: 12 }}>
+              <span style={{ color: 'var(--on-surface-variant)' }}>{label}</span>
+              <span className="data-mono" style={{ color: 'var(--on-surface)' }}>{val}</span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Controls */}
+      <div style={{
+        position: 'absolute', bottom: 16, right: 16,
+        background: 'rgba(36,49,70,0.75)',
+        backdropFilter: 'blur(12px)',
+        border: '1px solid var(--outline-variant)',
+        borderRadius: 6,
+        display: 'flex', flexDirection: 'column',
+        overflow: 'hidden',
+      }}>
+        {[
+          { icon: 'zoom_in',             action: () => fgRef.current.zoom(fgRef.current.zoom() * 1.4, 200) },
+          { icon: 'zoom_out',            action: () => fgRef.current.zoom(fgRef.current.zoom() * 0.7, 200) },
+          { icon: 'center_focus_strong', action: () => fgRef.current.zoomToFit(400, 40) },
+        ].map(({ icon, action }, i) => (
+          <button
+            key={icon}
+            onClick={action}
+            style={{
+              width: 34, height: 34,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              color: 'var(--on-surface)',
+              borderTop: i !== 0 ? '1px solid var(--outline-variant)' : 'none',
+            }}
+          >
             <span className="material-symbols-outlined" style={{ fontSize: 18 }}>{icon}</span>
           </button>
         ))}
+      </div>
+
+      {/* Interaction hint */}
+      <div style={{
+        position: 'absolute', bottom: 16, left: 16,
+        fontSize: 11, color: 'var(--on-surface-variant)',
+        background: 'rgba(16,20,24,0.6)',
+        padding: '4px 10px', borderRadius: 4,
+        backdropFilter: 'blur(8px)',
+      }}>
+        Drag nodes · Scroll to zoom · Click to focus
       </div>
     </div>
   );

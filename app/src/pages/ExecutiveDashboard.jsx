@@ -34,17 +34,17 @@ export function ExecutiveDashboard() {
   const [kpis, setKpis] = useState(null);
   const [suppliers, setSuppliers] = useState([]);
   const [matrix, setMatrix] = useState([]);
-  const [sensitivity, setSensitivity] = useState([]);
+  const [playbook, setPlaybook] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    Promise.all([api.kpis(), api.suppliers(), api.priorityMatrix(), api.sensitivity()])
-      .then(([k, s, m, sen]) => {
+    Promise.all([api.kpis(), api.suppliers(), api.priorityMatrix(), api.playbook()])
+      .then(([k, s, m, pb]) => {
         setKpis(k);
         setSuppliers(s);
         setMatrix(m);
-        setSensitivity(sen);
+        setPlaybook(pb);
         setLoading(false);
       })
       .catch(e => { setError(e.message); setLoading(false); });
@@ -60,6 +60,28 @@ export function ExecutiveDashboard() {
   // Build scatter points: normalize resilience_score and total_p95_exposure
   const maxExp = Math.max(...matrix.map(r => r.total_p95_exposure || 0), 1);
 
+  // Top 3 actions by ROI
+  const top3Actions = [...playbook]
+    .filter(r => r.roi != null && r.roi > 0)
+    .sort((a, b) => (b.roi || 0) - (a.roi || 0))
+    .slice(0, 3);
+
+  const ACTION_ICONS = {
+    'Dual-Sourcing': 'hub',
+    'Safety Stock': 'inventory',
+    'Geographic Diversification': 'language',
+    'Supplier Development': 'groups',
+    'Quarterly Monitoring': 'monitoring',
+  };
+
+  function getActionIcon(action) {
+    if (!action) return 'bolt';
+    for (const [key, icon] of Object.entries(ACTION_ICONS)) {
+      if (action.includes(key)) return icon;
+    }
+    return 'bolt';
+  }
+
   return (
     <>
       <div className="page-header">
@@ -68,28 +90,40 @@ export function ExecutiveDashboard() {
 
       {/* KPI Cards */}
       <div className="kpi-grid">
-        <div className="kpi-card">
-          <span className="kpi-card__label">Total Network P95 Exposure</span>
+        <div className="kpi-card" title="Worst-case estimated financial loss across the entire network at the 95th percentile.">
+          <span className="kpi-card__label" style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+            Total Network P95 Exposure 
+            <span className="material-symbols-outlined" style={{fontSize: 14, cursor: 'help'}}>info</span>
+          </span>
           <div className="kpi-card__value-row">
             <span className="kpi-card__value" style={{ color: '#ff6b59' }}>{fmt(kpis?.total_network_exposure)}</span>
           </div>
         </div>
-        <div className="kpi-card">
-          <span className="kpi-card__label">Critical Priority Suppliers</span>
+        <div className="kpi-card" title="Count of suppliers mapping to the 'Critical Priority' quadrant based on exposure and resilience.">
+          <span className="kpi-card__label" style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+            Critical Priority Suppliers 
+            <span className="material-symbols-outlined" style={{fontSize: 14, cursor: 'help'}}>info</span>
+          </span>
           <div className="kpi-card__value-row">
             <span className="kpi-card__value">{kpis?.critical_priority_count ?? '—'}</span>
             <RiskBadge quadrant="Critical" />
           </div>
         </div>
-        <div className="kpi-card">
-          <span className="kpi-card__label">Mitigation Budget</span>
+        <div className="kpi-card" title="Total budget currently allocated to high-ROI playbook interventions.">
+          <span className="kpi-card__label" style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+            Mitigation Budget 
+            <span className="material-symbols-outlined" style={{fontSize: 14, cursor: 'help'}}>info</span>
+          </span>
           <div className="kpi-card__value-row">
             <span className="kpi-card__value" style={{ color: '#ffa600' }}>{fmt(kpis?.recommended_budget)}</span>
             <span className="kpi-card__trend data-mono" style={{ color: 'var(--outline)' }}>Allocated</span>
           </div>
         </div>
-        <div className="kpi-card">
-          <span className="kpi-card__label">Portfolio ROI</span>
+        <div className="kpi-card" title="Average return on investment across all recommended mitigation actions.">
+          <span className="kpi-card__label" style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+            Portfolio ROI 
+            <span className="material-symbols-outlined" style={{fontSize: 14, cursor: 'help'}}>info</span>
+          </span>
           <div className="kpi-card__value-row">
             <span className="kpi-card__value" style={{ color: '#464c89' }}>
               {kpis?.portfolio_roi != null ? `${kpis.portfolio_roi.toFixed(2)}×` : '—'}
@@ -122,8 +156,20 @@ export function ExecutiveDashboard() {
                 {topSuppliers.map(s => {
                   const color = bandColor(s.risk_band);
                   return (
-                    <tr key={s.supplier_id} onClick={() => navigate(`/suppliers/${s.supplier_id}`)}>
-                      <td><strong style={{ color: 'var(--on-surface)' }}>{s.supplier_name}</strong></td>
+                    <tr 
+                      key={s.supplier_id} 
+                      onClick={() => navigate(`/suppliers/${s.supplier_id}`)}
+                      style={{ cursor: 'pointer', transition: 'background 0.2s' }}
+                      onMouseEnter={e => e.currentTarget.style.background = 'var(--surface-container)'}
+                      onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                      title="Click to view full supplier profile →"
+                    >
+                      <td>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <strong style={{ color: 'var(--on-surface)' }}>{s.supplier_name}</strong>
+                          <span className="material-symbols-outlined hover-arrow" style={{ fontSize: 16, color: 'var(--primary)', opacity: 0.5 }}>arrow_forward</span>
+                        </div>
+                      </td>
                       <td className="data-mono" style={{ color: 'var(--on-surface-variant)' }}>{s.country}</td>
                       <td style={{ color: 'var(--on-surface-variant)' }}>{s.tier ?? '—'}</td>
                       <td>{s.risk_band ? <RiskBadge riskBand={s.risk_band} /> : '—'}</td>
@@ -163,7 +209,6 @@ export function ExecutiveDashboard() {
             {matrix.map(r => {
               const x = Math.min(95, Math.max(2, (r.total_p95_exposure / maxExp) * 96));
               const y = Math.min(95, Math.max(2, (1 - (r.resilience_score || 0)) * 96));
-              const color = bandColor(null); // default; derive from quadrant
               const qColor = r.priority_quadrant?.toLowerCase().includes('critical') ? '#ff6b59'
                 : r.priority_quadrant?.toLowerCase().includes('monitor') ? '#ffa600'
                 : r.priority_quadrant?.toLowerCase().includes('contingency') ? '#ffa600'
@@ -191,7 +236,7 @@ export function ExecutiveDashboard() {
           </div>
         </div>
 
-        {/* Additional Analytical Insights */}
+        {/* Bottom row */}
         <div style={{ gridColumn: '1 / -1', display: 'flex', gap: 24, flexWrap: 'wrap', marginTop: 12 }}>
           
           {/* Network Resilience Before/After */}
@@ -245,59 +290,82 @@ export function ExecutiveDashboard() {
             </div>
           </div>
 
-          {/* Sensitivity Analysis Widget */}
+          {/* Top 3 Actions Right Now */}
           <div className="card card--p" style={{ flex: '2 1 500px' }}>
-            <div className="section-header">
-              <h3>Scoring Sensitivity Analysis</h3>
-              <span className="material-symbols-outlined" style={{ color: 'var(--outline-variant)' }}>tune</span>
+            <div className="section-header" style={{ marginBottom: 16 }}>
+              <h3>Top 3 Actions Right Now</h3>
+              <button
+                className="section-header__btn"
+                onClick={() => navigate('/playbook')}
+              >View Full Playbook</button>
             </div>
-            <p className="body-xs" style={{ color: 'var(--on-surface-variant)', marginBottom: 12 }}>
-              Risk band shifting across weight configurations for top exposed suppliers.
+            <p className="body-xs" style={{ color: 'var(--on-surface-variant)', marginBottom: 20 }}>
+              Highest-ROI mitigation actions across your critical supplier portfolio, ranked by return on investment.
             </p>
-            <div style={{ overflowX: 'auto' }}>
-              <table className="data-table" style={{ width: '100%', fontSize: 12 }}>
-                <thead>
-                  <tr>
-                    <th>Supplier</th>
-                    <th style={{ textAlign: 'center' }}>Default</th>
-                    <th style={{ textAlign: 'center' }}>Dep Heavy</th>
-                    <th style={{ textAlign: 'center' }}>Geo Heavy</th>
-                    <th style={{ textAlign: 'center' }}>Rel Heavy</th>
-                    <th style={{ textAlign: 'center' }}>Sub Heavy</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {sensitivity.slice(0, 5).map(s => (
-                    <tr key={s.supplier_id}>
-                      <td><strong>{s.supplier_name.split(' (')[0]}</strong></td>
-                      {['default', 'dependency_heavy', 'geographic_heavy', 'reliability_heavy', 'substitutability_heavy'].map(config => {
-                        const band = s[config];
-                        const color = bandColor(band);
-                        return (
-                          <td key={config} style={{ textAlign: 'center' }}>
-                            <span style={{ 
-                              display: 'inline-block',
-                              width: 12, 
-                              height: 12, 
-                              borderRadius: '50%', 
-                              background: color,
-                              boxShadow: `0 0 6px ${color}`
-                            }} title={`${band} Risk`} />
-                          </td>
-                        );
-                      })}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'center', gap: 16, marginTop: 12, fontSize: 11 }}>
-              {['Critical', 'High', 'Medium', 'Low'].map(band => (
-                <div key={band} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                  <div style={{ width: 10, height: 10, borderRadius: '50%', background: bandColor(band) }} />
-                  <span className="label-caps" style={{ color: 'var(--on-surface-variant)' }}>{band}</span>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              {top3Actions.map((action, i) => {
+                const roiColor = action.roi >= 3 ? 'var(--primary)' : action.roi >= 1 ? '#ffa600' : '#ff6b59';
+                const icon = getActionIcon(action.recommended_action);
+                const priorityColors = {
+                  'Critical Priority': { bg: 'rgba(255,107,89,0.08)', border: 'rgba(255,107,89,0.25)', accent: '#ff6b59' },
+                  'Monitor Closely':   { bg: 'rgba(255,166,0,0.08)',  border: 'rgba(255,166,0,0.25)',  accent: '#ffa600' },
+                };
+                const pStyle = priorityColors[action.priority_quadrant] || { bg: 'var(--surface-container-high)', border: 'var(--outline-variant)', accent: '#464c89' };
+                return (
+                  <div
+                    key={i}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 16,
+                      background: pStyle.bg,
+                      border: `1px solid ${pStyle.border}`,
+                      borderRadius: 8,
+                      padding: '12px 16px',
+                    }}
+                  >
+                    {/* Rank badge */}
+                    <div style={{
+                      width: 28, height: 28, borderRadius: '50%',
+                      background: pStyle.accent,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontWeight: 800, fontSize: 13, color: 'white', flexShrink: 0,
+                    }}>
+                      {i + 1}
+                    </div>
+
+                    {/* Icon */}
+                    <span className="material-symbols-outlined" style={{ fontSize: 22, color: pStyle.accent, flexShrink: 0 }}>
+                      {icon}
+                    </span>
+
+                    {/* Main text */}
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontWeight: 700, fontSize: 13, color: 'var(--on-surface)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {action.recommended_action} — <span style={{ color: 'var(--on-surface-variant)', fontWeight: 400 }}>{action.supplier_name}</span>
+                      </div>
+                      <div style={{ fontSize: 11, color: 'var(--on-surface-variant)', marginTop: 3 }}>
+                        Cost: <strong style={{ color: 'var(--on-surface)' }}>{fmt(action.action_cost ?? action.estimated_cost)}</strong>
+                        &nbsp;·&nbsp;Saves: <strong style={{ color: 'var(--primary)' }}>{fmt(action.risk_reduction ?? action.p95_impact)}</strong>
+                      </div>
+                    </div>
+
+                    {/* ROI badge */}
+                    <div style={{
+                      background: 'var(--surface-container-high)',
+                      border: `1px solid ${roiColor}`,
+                      borderRadius: 6, padding: '4px 10px',
+                      textAlign: 'center', flexShrink: 0,
+                    }}>
+                      <div style={{ fontSize: 15, fontWeight: 800, color: roiColor }}>{action.roi.toFixed(1)}×</div>
+                      <div style={{ fontSize: 9, color: 'var(--on-surface-variant)', letterSpacing: '0.06em', textTransform: 'uppercase' }}>ROI</div>
+                    </div>
+                  </div>
+                );
+              })}
+              {top3Actions.length === 0 && (
+                <div style={{ color: 'var(--on-surface-variant)', textAlign: 'center', padding: '24px 0', fontSize: 13 }}>
+                  No high-ROI actions available at this time. Adjust risk thresholds or run new scenarios to generate recommendations.
                 </div>
-              ))}
+              )}
             </div>
           </div>
 
