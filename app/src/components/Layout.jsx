@@ -1,4 +1,5 @@
 import { NavLink, useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
 
 const NAV_LINKS = [
   { to: '/', icon: 'dashboard', label: 'Overview' },
@@ -13,10 +14,20 @@ const NAV_LINKS = [
 
 export function Layout({ children, onToast }) {
   const navigate = useNavigate();
+  const [theme, setTheme] = useState(() => localStorage.getItem('theme') || 'dark');
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+    localStorage.setItem('theme', theme);
+  }, [theme]);
 
   function handleComingSoon(e) {
     e.preventDefault();
     onToast?.('This feature is coming soon');
+  }
+
+  function toggleTheme() {
+    setTheme(t => t === 'dark' ? 'light' : 'dark');
   }
 
   return (
@@ -66,6 +77,9 @@ export function Layout({ children, onToast }) {
             <NavLink to="/playbook" className={({ isActive }) => isActive ? 'active' : ''}>Analytics</NavLink>
           </nav>
           <div className="top-bar__actions">
+            <button className="top-bar__icon-btn" onClick={toggleTheme} title={`Switch to ${theme === 'dark' ? 'Light' : 'Dark'} Mode`}>
+              {theme === 'dark' ? 'light_mode' : 'dark_mode'}
+            </button>
             <button className="top-bar__icon-btn" onClick={() => onToast?.('No new notifications')}>notifications</button>
             <button className="top-bar__icon-btn" onClick={() => onToast?.('Settings coming soon')}>settings</button>
             <div className="top-bar__avatar material-symbols-outlined">person</div>

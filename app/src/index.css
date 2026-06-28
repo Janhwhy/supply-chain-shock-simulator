@@ -21,6 +21,9 @@
   --secondary-container:      #a00015;
   --on-secondary-container:   #ffa9a2;
   --background:               #101418;
+  --component-bg-focus:       #1a2a4a;
+  --text-inverse:             #ffffff;
+  --tooltip-bg:               rgba(26, 42, 74, 0.85);
 
   /* Semantic Risk Colors */
   --risk-critical: #ff6b59;
@@ -36,6 +39,36 @@
   --sp-lg:   40px;
   --sp-xl:   64px;
   --sp-gutter: 24px;
+}
+
+[data-theme="light"] {
+  --surface:                  #ffffff;
+  --surface-dim:              #f8f9fa;
+  --surface-bright:           #ffffff;
+  --surface-container-lowest: #ffffff;
+  --surface-container-low:    #f8f9fa;
+  --surface-container:        #f1f3f5;
+  --surface-container-high:   #e9ecef;
+  --surface-container-highest:#dee2e6;
+  --on-surface:               #212529;
+  --on-surface-variant:       #495057;
+  --outline:                  #adb5bd;
+  --outline-variant:          #ced4da;
+  --primary:                  #0056b3;
+  --primary-container:        #cce5ff;
+  --on-primary-container:     #002752;
+  --secondary-container:      #f8d7da;
+  --on-secondary-container:   #721c24;
+  --background:               #f8f9fa;
+  --component-bg-focus:       #e9ecef;
+  --text-inverse:             #212529;
+  --tooltip-bg:               rgba(255, 255, 255, 0.95);
+  
+  /* Semantic Risk Colors for Light Mode (Tweak for better contrast) */
+  --risk-critical: #d32f2f;
+  --risk-high:     #ed6c02;
+  --risk-medium:   #1976d2;
+  --risk-low:      #2e7d32;
 }
 
 /* ── Reset & Base ─────────────────────────────────────────────────────────── */
@@ -229,10 +262,10 @@ button { cursor: pointer; border: none; background: none; font-family: inherit; 
   flex-direction: column;
   gap: var(--sp-xs);
 }
-.kpi-card__label { font-size: 20px; font-weight: 600; color: var(--on-surface-variant); line-height: 28px; }
-.kpi-card__value-row { display: flex; align-items: baseline; gap: var(--sp-sm); margin-top: auto; }
-.kpi-card__value { font-size: 48px; font-weight: 700; line-height: 56px; letter-spacing: -0.02em; }
-.kpi-card__trend { font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 500; display: flex; align-items: center; }
+.kpi-card__label { font-size: 15px; font-weight: 600; color: var(--on-surface-variant); line-height: 22px; }
+.kpi-card__value-row { display: flex; align-items: baseline; gap: var(--sp-sm); margin-top: auto; flex-wrap: wrap; }
+.kpi-card__value { font-size: 36px; font-weight: 700; line-height: 44px; letter-spacing: -0.02em; white-space: nowrap; }
+.kpi-card__trend { font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 500; display: flex; align-items: center; }
 .kpi-card__trend .icon { font-family: 'Material Symbols Outlined'; font-size: 16px; }
 
 /* ── Risk Badge ───────────────────────────────────────────────────────────── */

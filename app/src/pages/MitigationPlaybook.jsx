@@ -159,7 +159,7 @@ export function MitigationPlaybook() {
 
           return (
             <div key={i} style={{ 
-              background: isExpanded ? '#1a2a4a' : 'var(--surface-container)', 
+              background: isExpanded ? 'var(--component-bg-focus)' : 'var(--surface-container)', 
               border: `1px solid var(--outline-variant)`, 
               borderLeft: isExpanded ? `4px solid ${quadColor}` : '1px solid var(--outline-variant)',
               borderRadius: '8px', 

@@ -104,9 +104,11 @@ export function ExecutiveDashboard() {
             Critical Priority Suppliers 
             <span className="material-symbols-outlined" style={{fontSize: 14, cursor: 'help'}}>info</span>
           </span>
+          <div>
+            <RiskBadge quadrant="Critical" />
+          </div>
           <div className="kpi-card__value-row">
             <span className="kpi-card__value">{kpis?.critical_priority_count ?? '—'}</span>
-            <RiskBadge quadrant="Critical" />
           </div>
         </div>
         <div className="kpi-card" title="Total budget currently allocated to high-ROI playbook interventions.">
@@ -327,7 +329,7 @@ export function ExecutiveDashboard() {
                       width: 28, height: 28, borderRadius: '50%',
                       background: pStyle.accent,
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      fontWeight: 800, fontSize: 13, color: 'white', flexShrink: 0,
+                      fontWeight: 800, fontSize: 13, color: 'var(--text-inverse)', flexShrink: 0,
                     }}>
                       {i + 1}
                     </div>

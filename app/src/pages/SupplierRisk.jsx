@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { api } from '../api/client';
 import { RiskBadge } from '../components/RiskBadge';
 import { LoadingSpinner, ErrorBox } from '../components/LoadingSpinner';
-import { Treemap, Tooltip, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, PieChart, Pie, Cell } from 'recharts';
+import { Treemap, Tooltip, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, PieChart, Pie, Cell, LabelList } from 'recharts';
 
 
 function bandColor(band) {
@@ -98,9 +98,9 @@ export function SupplierRisk() {
   const lowResilienceCount = suppliers.filter(s => s.resilience_score != null && s.resilience_score < 0.20).length;
 
   const InsightCard = ({ title, value }) => (
-    <div style={{ background: '#1a2a4a', borderLeft: '3px solid #dd4d88', borderRadius: 8, padding: 12, flex: 1 }}>
-      <div style={{ fontSize: 11, color: 'var(--on-surface-variant)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{title}</div>
-      <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--on-surface)' }}>{value}</div>
+    <div style={{ background: 'var(--component-bg-focus)', borderLeft: '3px solid #dd4d88', borderRadius: 8, padding: 12, flex: 1 }}>
+      <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--on-surface-variant)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{title}</div>
+      <div style={{ fontSize: 20, fontWeight: 700, color: 'var(--on-surface)' }}>{value}</div>
     </div>
   );
 
@@ -136,6 +136,23 @@ export function SupplierRisk() {
 
   return (
     <>
+      <style>{`
+        .treemap-cell rect {
+          transition: all 0.2s ease;
+        }
+        .treemap-cell:hover rect {
+          filter: brightness(1.2) drop-shadow(0 4px 6px rgba(0,0,0,0.3));
+          stroke: #fff !important;
+          stroke-width: 2px !important;
+        }
+        .treemap-text {
+          pointer-events: none;
+          font-family: 'Inter', system-ui, sans-serif;
+          fill: var(--text-inverse);
+          font-weight: 600;
+          text-shadow: 0 1px 3px rgba(0,0,0,0.8);
+        }
+      `}</style>
       <div className="page-header">
         <div>
           <h2 className="headline-lg">Supplier Risk Register</h2>
@@ -230,9 +247,9 @@ export function SupplierRisk() {
             onClick={() => setActiveView(view)}
             style={{
               padding: '6px 16px', borderRadius: 100, fontSize: 13, fontWeight: 600, border: '1px solid', cursor: 'pointer',
-              background: activeView === view ? '#954e9b' : '#1a2a4a',
-              borderColor: activeView === view ? '#954e9b' : '#464c89',
-              color: 'white', transition: 'all 0.2s'
+              background: activeView === view ? '#954e9b' : 'var(--component-bg-focus)',
+              borderColor: activeView === view ? '#954e9b' : 'var(--outline-variant)',
+              color: activeView === view ? 'var(--text-inverse)' : 'var(--on-surface)', transition: 'all 0.2s'
             }}
           >
             {view}
@@ -273,7 +290,7 @@ export function SupplierRisk() {
               
               return (
                 <React.Fragment key={quadrant}>
-                  <tr onClick={() => toggleGroup(quadrant)} style={{ cursor: 'pointer', background: '#1a2a4a' }}>
+                  <tr onClick={() => toggleGroup(quadrant)} style={{ cursor: 'pointer', background: 'var(--component-bg-focus)' }}>
                     <td colSpan={9} style={{ padding: '8px 16px', fontWeight: 700, color: qColor, borderBottom: '1px solid var(--outline-variant)' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                         <span className="material-symbols-outlined" style={{ fontSize: 18, transition: 'transform 0.2s', transform: collapsedGroups[quadrant] ? 'rotate(0deg)' : 'rotate(90deg)' }}>chevron_right</span>
@@ -349,7 +366,7 @@ export function SupplierRisk() {
       )}
 
       {activeView === 'Treemap' && (
-        <div className="card card--p" style={{ padding: '16px', height: 500 }}>
+        <div className="card card--p" style={{ padding: '16px', height: 500, overflow: 'hidden' }}>
           <ResponsiveContainer width="100%" height="100%">
             <Treemap
               data={filtered.map(s => ({
@@ -367,23 +384,45 @@ export function SupplierRisk() {
                 if (resilience_score < 0.25) fill = '#dd4d88';
                 else if (resilience_score <= 0.40) fill = '#ff6b59';
                 else if (resilience_score <= 0.55) fill = '#ffa600';
+                
+                const gap = 2;
+                const innerWidth = Math.max(0, width - gap * 2);
+                const innerHeight = Math.max(0, height - gap * 2);
+                
                 return (
-                  <g>
-                    <rect x={x} y={y} width={width} height={height} style={{ fill, stroke: '#1a2a4a', strokeWidth: 1 }} />
+                  <g className="treemap-cell" style={{ cursor: 'pointer' }}>
+                    <rect 
+                      x={x + gap} 
+                      y={y + gap} 
+                      width={innerWidth} 
+                      height={innerHeight} 
+                      rx={6} 
+                      ry={6}
+                      style={{ fill, stroke: 'rgba(255,255,255,0.1)', strokeWidth: 1 }} 
+                    />
                   </g>
                 );
               }}
             >
               <Tooltip
+                cursor={false}
                 content={({ active, payload }) => {
                   if (active && payload && payload.length) {
                     const data = payload[0].payload;
                     return (
-                      <div style={{ background: '#1a2a4a', border: '1px solid #464c89', padding: 12, borderRadius: 8 }}>
-                        <div style={{ fontWeight: 700, color: 'white', marginBottom: 4 }}>{data.name}</div>
-                        <div style={{ fontSize: 12, color: '#ff6b59', marginBottom: 2 }}>Exposure: {fmt(data.actualValue)}</div>
-                        <div style={{ fontSize: 12, color: 'var(--on-surface-variant)' }}>Resilience: {data.resilience_score?.toFixed(3)}</div>
-                        <div style={{ fontSize: 12, color: 'var(--on-surface-variant)' }}>Risk Band: {data.risk_band}</div>
+                      <div style={{ 
+                        background: 'rgba(26, 42, 74, 0.7)', 
+                        backdropFilter: 'blur(12px)',
+                        WebkitBackdropFilter: 'blur(12px)',
+                        border: '1px solid rgba(255,255,255,0.15)', 
+                        padding: '12px 16px', 
+                        borderRadius: 12,
+                        boxShadow: '0 8px 32px rgba(0,0,0,0.4)'
+                      }}>
+                        <div style={{ fontWeight: 700, color: 'var(--text-inverse)', marginBottom: 6, fontSize: 14 }}>{data.name}</div>
+                        <div style={{ fontSize: 13, color: '#ff6b59', marginBottom: 2, fontWeight: 600 }}>Exposure: {fmt(data.actualValue)}</div>
+                        <div style={{ fontSize: 12, color: 'var(--on-surface-variant)', marginBottom: 2 }}>Resilience: <span style={{color: 'var(--text-inverse)', fontWeight: 600}}>{data.resilience_score?.toFixed(3)}</span></div>
+                        <div style={{ fontSize: 12, color: 'var(--on-surface-variant)' }}>Risk Band: <span style={{color: 'var(--text-inverse)', fontWeight: 600}}>{data.risk_band}</span></div>
                       </div>
                     );
                   }
@@ -407,12 +446,12 @@ export function SupplierRisk() {
               <div key={swimlane.label} style={{ background: 'var(--surface-container)', borderRadius: 8, padding: 16, borderLeft: `3px solid ${swimlane.color}` }}>
                 <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 12 }}>
                   <h4 style={{ margin: 0, fontSize: 14, fontWeight: 700, color: 'var(--on-surface)' }}>{swimlane.label}</h4>
-                  <span style={{ background: '#1a2a4a', padding: '2px 8px', borderRadius: 100, fontSize: 11, color: 'var(--on-surface)' }}>{laneSuppliers.length}</span>
+                  <span style={{ background: 'var(--component-bg-focus)', padding: '2px 8px', borderRadius: 100, fontSize: 11, color: 'var(--on-surface)' }}>{laneSuppliers.length}</span>
                 </div>
                 <div style={{ display: 'flex', gap: 12, overflowX: 'auto', paddingBottom: 8 }}>
                   {laneSuppliers.map(s => (
-                    <div key={s.supplier_id} onClick={() => navigate(`/suppliers/${s.supplier_id}`)} style={{ background: '#1a2a4a', borderRadius: 8, padding: 12, minWidth: 200, flexShrink: 0, cursor: 'pointer' }}>
-                      <div style={{ fontWeight: 700, fontSize: 13, color: 'white', marginBottom: 4 }}>{s.supplier_name}</div>
+                    <div key={s.supplier_id} onClick={() => navigate(`/suppliers/${s.supplier_id}`)} style={{ background: 'var(--component-bg-focus)', borderRadius: 8, padding: 12, minWidth: 200, flexShrink: 0, cursor: 'pointer' }}>
+                      <div style={{ fontWeight: 700, fontSize: 13, color: 'var(--on-surface)', marginBottom: 4 }}>{s.supplier_name}</div>
                       <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 12 }}>
                         <span style={{ fontSize: 11, color: 'var(--on-surface-variant)' }}>{s.country}</span>
                         <span style={{ background: 'var(--surface-container-high)', padding: '2px 6px', borderRadius: 4, fontSize: 10, color: 'var(--on-surface-variant)' }}>Tier {s.tier}</span>
@@ -456,7 +495,7 @@ export function SupplierRisk() {
             <BarChart data={countryChartData} layout="vertical" margin={{ top: 0, right: 10, left: 10, bottom: 0 }}>
               <XAxis type="number" hide />
               <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: 'var(--on-surface-variant)' }} width={70} />
-              <Bar dataKey="value" onClick={(d) => setChartCountryFilter(chartCountryFilter === d.name ? '' : d.name)} cursor="pointer">
+              <Bar dataKey="value" onClick={(d) => setChartCountryFilter(chartCountryFilter === d.name ? '' : d.name)} cursor="pointer" radius={[0, 4, 4, 0]}>
                 {countryChartData.map((e, i) => (
                   <Cell key={`cell-${i}`} fill="var(--primary)" opacity={chartCountryFilter && chartCountryFilter !== e.name ? 0.3 : 1} />
                 ))}
@@ -469,12 +508,12 @@ export function SupplierRisk() {
           <h5 style={{ margin: '0 0 8px 0', fontSize: 12, color: 'var(--on-surface-variant)', textAlign: 'center' }}>Suppliers by Tier</h5>
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
-              <Pie data={tierChartData} dataKey="value" innerRadius={40} outerRadius={60} paddingAngle={2} onClick={(d) => setChartTierFilter(chartTierFilter === d.name ? '' : d.name)} cursor="pointer">
+              <Pie data={tierChartData} dataKey="value" innerRadius={45} outerRadius={65} paddingAngle={3} stroke="var(--surface-container)" strokeWidth={2} onClick={(d) => setChartTierFilter(chartTierFilter === d.name ? '' : d.name)} cursor="pointer">
                 {tierChartData.map((e, i) => (
                   <Cell key={`cell-${i}`} fill={tierColors[i % tierColors.length]} opacity={chartTierFilter && chartTierFilter !== e.name ? 0.3 : 1} />
                 ))}
               </Pie>
-              <Tooltip contentStyle={{ background: '#1a2a4a', border: 'none', borderRadius: 4, fontSize: 11 }} itemStyle={{ color: 'white' }} />
+              <Tooltip contentStyle={{ background: 'var(--tooltip-bg)', backdropFilter: 'blur(8px)', border: '1px solid var(--outline-variant)', borderRadius: 8, fontSize: 11 }} itemStyle={{ color: 'var(--text-inverse)' }} />
             </PieChart>
           </ResponsiveContainer>
         </div>
@@ -482,10 +521,11 @@ export function SupplierRisk() {
         <div style={{ height: 180 }}>
           <h5 style={{ margin: '0 0 8px 0', fontSize: 12, color: 'var(--on-surface-variant)', textAlign: 'center' }}>Suppliers by Risk Band</h5>
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={bandChartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+            <BarChart data={bandChartData} margin={{ top: 20, right: 10, left: -20, bottom: 0 }}>
               <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: 'var(--on-surface-variant)' }} />
               <YAxis hide />
-              <Bar dataKey="value" onClick={(d) => setChartBandFilter(chartBandFilter === d.name ? '' : d.name)} cursor="pointer">
+              <Bar dataKey="value" onClick={(d) => setChartBandFilter(chartBandFilter === d.name ? '' : d.name)} cursor="pointer" radius={[4, 4, 0, 0]} barSize={48}>
+                <LabelList dataKey="value" position="top" fill="rgba(255,255,255,0.8)" fontSize={11} fontWeight={700} />
                 {bandChartData.map((e, i) => (
                   <Cell key={`cell-${i}`} fill={riskBandColors[e.name] || 'var(--primary)'} opacity={chartBandFilter && chartBandFilter !== e.name ? 0.3 : 1} />
                 ))}
