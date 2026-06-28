@@ -321,8 +321,8 @@ button { cursor: pointer; border: none; background: none; font-family: inherit; 
   backdrop-filter: blur(12px);
 }
 .gauge-card__label { font-size: 12px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: var(--on-surface-variant); position: absolute; top: var(--sp-sm); left: var(--sp-sm); }
-.gauge-card__svg { width: 96px; height: 96px; transform: rotate(-90deg); margin-top: var(--sp-xl); }
-.gauge-card__center { position: absolute; font-size: 32px; font-weight: 600; line-height: 40px; }
+.gauge-card__svg { width: 96px; height: 96px; transform: rotate(-90deg); }
+.gauge-card__center { position: absolute; font-size: 28px; font-weight: 600; line-height: 40px; }
 .gauge-card__status { font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 500; margin-top: var(--sp-sm); }
 
 /* ── Scatter / Priority Matrix ────────────────────────────────────────────── */

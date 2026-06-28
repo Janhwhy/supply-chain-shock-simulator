@@ -43,10 +43,10 @@ export function SupplierDetail() {
   if (loading) return <LoadingSpinner message="Loading supplier detail…" />;
   if (error)   return <ErrorBox message={error} />;
 
-  const scores = data.resilience_scores?.[0] || {};
-  const pm = data.priority_matrix?.[0] || {};
+  const scores = Array.isArray(data.resilience_scores) ? data.resilience_scores[0] : (data.resilience_scores || {});
+  const pm = Array.isArray(data.priority_matrix) ? data.priority_matrix[0] : (data.priority_matrix || {});
   const simResults = data.simulation_results || [];
-  const playbook = data.playbook?.[0] || null;
+  const playbook = Array.isArray(data.playbook) ? data.playbook[0] : (data.playbook || null);
   const scoreInterp = data.score_interpretation || {};
 
   // Max sim value for bar height scaling
