@@ -112,7 +112,7 @@ def test_recommend_action_routine_review():
     }
     action_id, dom = recommend_action(sup)
     assert action_id == 'quarterly_monitoring'
-    assert dom == 'none'
+    assert dom == 'reliability_risk'
 
 
 def test_recommend_action_fallback_lookup():
@@ -226,12 +226,12 @@ def test_compute_roi_flat_rates():
     sup_mon = {
         'supplier_id': 4,
         'total_p95_exposure': 100000.0,
-        'dominant_risk_factor': 'none'
+        'dominant_risk_factor': 'reliability_risk'
     }
     res_mon = compute_roi(sup_mon, MITIGATION_ACTIONS['quarterly_monitoring'], 0.35)
     assert pytest.approx(res_mon['action_cost']) == 15000.0
-    assert pytest.approx(res_mon['risk_reduction']) == 0.0
-    assert pytest.approx(res_mon['roi']) == 0.0
+    assert pytest.approx(res_mon['risk_reduction']) == 35000.0 * 0.15
+    assert pytest.approx(res_mon['roi']) == (35000.0 * 0.15) / 15000.0
 
 
 def test_compute_roi_zero_edge_cases():
@@ -329,7 +329,7 @@ def test_generate_playbook(mock_read, mock_playbook_inputs):
     # Supplier C: Routine Review -> Quarterly Monitoring
     row_c = df_playbook[df_playbook['supplier_id'] == 3].iloc[0]
     assert row_c['recommended_action'] == 'Quarterly Monitoring'
-    assert row_c['dominant_risk_factor'] == 'none'
+    assert row_c['dominant_risk_factor'] == 'reliability_risk'
 
 
 def test_playbook_summary():

@@ -58,9 +58,11 @@ MITIGATION_ACTIONS = {
         'action_id': 'quarterly_monitoring',
         'action_name': 'Quarterly Monitoring',
         'description': 'Implement quarterly performance and risk monitoring.',
-        'applies_to_factor': 'none',
+        'applies_to_factor': 'reliability',
         'base_cost_formula': lambda row: 15000.0,
-        'risk_reduction_estimate': 0.0
+        'risk_reduction_estimate': {
+            'reliability_risk': 0.15
+        }
     }
 }
 
@@ -137,7 +139,7 @@ def recommend_action(supplier_row, df_factor_breakdown=None):
         
     else:  # 'Routine Review' or any other fallback
         # Recommend Quarterly Monitoring
-        return 'quarterly_monitoring', 'none'
+        return 'quarterly_monitoring', 'reliability_risk'
 
 
 # ============================================================================
@@ -262,7 +264,17 @@ def generate_playbook(df_priority_matrix, df_resilience_scores, df_simulation_re
         # Find resilience info for risk band and factors
         res_row = df_resilience_scores[df_resilience_scores['supplier_id'] == s_id]
         if not res_row.empty:
+            composite_score = res_row.iloc[0].get('composite_score', 0.5)
             r_band = res_row.iloc[0].get('risk_band')
+            if pd.isna(r_band) or r_band is None:
+                if composite_score < 0.15:
+                    r_band = 'Critical'
+                elif composite_score < 0.40:
+                    r_band = 'High'
+                elif composite_score < 0.70:
+                    r_band = 'Medium'
+                else:
+                    r_band = 'Low'
             dep_risk = res_row.iloc[0].get('dependency_risk', 0.0)
             geo_risk = res_row.iloc[0].get('geographic_risk', res_row.iloc[0].get('geo_risk', 0.0))
             rel_risk = res_row.iloc[0].get('reliability_risk', 0.0)

@@ -31,6 +31,7 @@ export function MitigationPlaybook() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [filter, setFilter] = useState('');
+  const [expandedIndex, setExpandedIndex] = useState(null);
 
   useEffect(() => {
     Promise.all([api.playbook(), api.kpis()])
@@ -126,62 +127,114 @@ export function MitigationPlaybook() {
         ))}
       </div>
 
-      {/* Main Table */}
-      <div className="card" style={{ marginBottom: 24, overflow: 'auto' }}>
-        <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--outline-variant)', background: 'var(--surface-container-high)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      {/* Main Accordion List */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: 24 }}>
+        <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--outline-variant)', background: 'var(--surface-container-high)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderRadius: '8px' }}>
           <h2 className="title-md">Active Interventions</h2>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <span className="material-symbols-outlined" style={{ color: 'var(--on-surface-variant)', cursor: 'pointer', fontSize: 20 }}>filter_list</span>
-            <span className="material-symbols-outlined" style={{ color: 'var(--on-surface-variant)', cursor: 'pointer', fontSize: 20 }}>more_vert</span>
+            <span className="label-caps" style={{ color: 'var(--on-surface-variant)' }}>{filtered.length} Actions</span>
           </div>
         </div>
-        <table className="data-table" style={{ minWidth: 1200 }}>
-          <thead style={{ background: 'var(--surface-container-low)' }}>
-            <tr>
-              <th>Supplier Name</th>
-              <th>Priority Quadrant</th>
-              <th>Dominant Risk Factor</th>
-              <th>Recommended Action</th>
-              <th>Action Description</th>
-              <th style={{ textAlign: 'right' }}>Action Cost</th>
-              <th style={{ textAlign: 'right' }}>Worst-Case Loss</th>
-              <th style={{ textAlign: 'right' }}>Risk Reduction</th>
-              <th style={{ textAlign: 'right' }}>ROI ↓</th>
-              <th style={{ textAlign: 'right' }}>Payback</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filtered.map((r, i) => {
-              const isCrit = r.priority_quadrant?.toLowerCase().includes('critical');
-              const isMonitor = r.priority_quadrant?.toLowerCase().includes('monitor');
-              const rowBg = isCrit ? 'rgba(255,107,89,0.06)' : isMonitor ? 'rgba(255,166,0,0.06)' : 'transparent';
-              
-              // Payback period years formatting
-              let paybackStr = '—';
-              if (r.payback_period_years != null) {
-                paybackStr = r.payback_period_years === Infinity ? '∞' : `${r.payback_period_years.toFixed(2)} yrs`;
-              } else if (r.estimated_cost && r.p95_impact && r.roi) {
-                const yrs = r.estimated_cost / (r.p95_impact * Math.max(r.roi, 0.01)) / 12.0;
-                paybackStr = `${yrs.toFixed(2)} yrs`;
-              }
 
-              return (
-                <tr key={i} style={{ background: rowBg }}>
-                  <td style={{ fontWeight: 600 }}>{r.supplier_name || `SUP-${r.supplier_id}`}</td>
-                  <td>{r.priority_quadrant ? <RiskBadge quadrant={r.priority_quadrant} /> : '—'}</td>
-                  <td className="body-sm" style={{ color: 'var(--on-surface-variant)' }}>{r.dominant_risk_label || dominantRisk(r)}</td>
-                  <td><strong>{r.recommended_action}</strong></td>
-                  <td className="body-xs" style={{ color: 'var(--on-surface-variant)', maxWidth: 300 }}>{r.action_description || '—'}</td>
-                  <td className="data-mono" style={{ textAlign: 'right' }}>{fmt(r.action_cost ?? r.estimated_cost)}</td>
-                  <td className="data-mono" style={{ textAlign: 'right' }}>{fmt(r.expected_annual_loss ?? r.p95_impact)}</td>
-                  <td className="data-mono" style={{ textAlign: 'right', color: 'var(--primary)' }}>{fmt(r.risk_reduction)}</td>
-                  <td className="data-mono" style={{ textAlign: 'right', color: '#ffa600', fontWeight: 700 }}>{r.roi != null ? `${r.roi.toFixed(2)}×` : '—'}</td>
-                  <td className="data-mono" style={{ textAlign: 'right' }}>{paybackStr}</td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+        {filtered.map((r, i) => {
+          const isExpanded = expandedIndex === i;
+          const roi = r.roi || 0;
+          
+          let roiColor = '#ff6b59'; // red
+          if (roi > 1) roiColor = '#38A169'; // green
+          else if (roi >= 0.5) roiColor = '#ffa600'; // orange
+
+          const isCrit = r.priority_quadrant?.toLowerCase().includes('critical');
+          const isMonitor = r.priority_quadrant?.toLowerCase().includes('monitor');
+          const quadColor = isCrit ? '#dd4d88' : isMonitor ? '#ffa600' : '#4299e1';
+
+          // Payback formatting
+          let paybackStr = '—';
+          if (r.payback_period_years != null) {
+            paybackStr = r.payback_period_years === Infinity ? '∞' : `${(r.payback_period_years * 12).toFixed(1)} months`;
+          } else if (r.estimated_cost && r.p95_impact && r.roi) {
+            const yrs = r.estimated_cost / (r.p95_impact * Math.max(r.roi, 0.01));
+            paybackStr = `${(yrs * 12).toFixed(1)} months`;
+          }
+
+          return (
+            <div key={i} style={{ 
+              background: isExpanded ? '#1a2a4a' : 'var(--surface-container)', 
+              border: `1px solid var(--outline-variant)`, 
+              borderLeft: isExpanded ? `4px solid ${quadColor}` : '1px solid var(--outline-variant)',
+              borderRadius: '8px', 
+              overflow: 'hidden',
+              transition: 'all 0.2s ease-in-out'
+            }}>
+              {/* Collapsed Header */}
+              <div 
+                onClick={() => setExpandedIndex(isExpanded ? null : i)}
+                style={{ display: 'flex', alignItems: 'center', padding: '16px', cursor: 'pointer', gap: '16px' }}
+              >
+                <div style={{ flex: '1', display: 'flex', alignItems: 'center', gap: '16px' }}>
+                  <strong style={{ fontSize: '15px', color: 'var(--on-surface)', width: '220px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {r.supplier_name || `SUP-${r.supplier_id}`}
+                  </strong>
+                  <div style={{ width: '150px' }}>
+                    {r.priority_quadrant ? <RiskBadge quadrant={r.priority_quadrant} /> : '—'}
+                  </div>
+                  <span style={{ fontSize: '14px', fontWeight: 500, color: 'var(--on-surface-variant)' }}>{r.recommended_action}</span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                  <div style={{ background: `${roiColor}15`, color: roiColor, border: `1px solid ${roiColor}40`, padding: '4px 12px', borderRadius: '12px', fontWeight: 700, fontSize: '13px' }}>
+                    ROI: {r.roi != null ? `${r.roi.toFixed(1)}×` : '—'}
+                  </div>
+                  <span className="material-symbols-outlined" style={{ color: 'var(--on-surface-variant)', transform: isExpanded ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}>expand_more</span>
+                </div>
+              </div>
+
+              {/* Expanded Body */}
+              {isExpanded && (
+                <div style={{ padding: '0 16px 20px 16px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                  <div style={{ height: '1px', background: 'rgba(255,255,255,0.05)', margin: '0 -16px' }} />
+                  
+                  <div style={{ display: 'flex', gap: '24px' }}>
+                    <div style={{ flex: 2 }}>
+                      <h4 className="label-caps" style={{ color: 'var(--on-surface-variant)', marginBottom: '8px' }}>Action Description</h4>
+                      <p className="body-sm" style={{ color: 'var(--on-surface)', lineHeight: 1.5, background: 'var(--surface-container)', padding: '12px', borderRadius: '6px' }}>
+                        {r.action_description || '—'}
+                      </p>
+                      
+                      <h4 className="label-caps" style={{ color: 'var(--on-surface-variant)', marginTop: '16px', marginBottom: '8px' }}>Dominant Risk Factor</h4>
+                      <span style={{ background: 'var(--surface-container-high)', padding: '4px 8px', borderRadius: '4px', fontSize: '12px', color: 'var(--on-surface)', display: 'inline-block' }}>
+                        {(r.dominant_risk_label || dominantRisk(r)) === '—' ? 'Minimal Risk' : (r.dominant_risk_label || dominantRisk(r))}
+                      </span>
+                    </div>
+                    
+                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '12px', background: 'var(--surface)', padding: '16px', borderRadius: '8px', border: '1px solid var(--outline-variant)' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <span className="body-xs" style={{ color: 'var(--on-surface-variant)' }}>Action Cost</span>
+                        <strong className="data-mono">{fmt(r.action_cost ?? r.estimated_cost)}</strong>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <span className="body-xs" style={{ color: 'var(--on-surface-variant)' }}>Worst-Case Loss</span>
+                        <strong className="data-mono" style={{ color: '#ff6b59' }}>{fmt(r.expected_annual_loss ?? r.p95_impact)}</strong>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <span className="body-xs" style={{ color: 'var(--on-surface-variant)' }}>Risk Reduction</span>
+                        <strong className="data-mono" style={{ color: '#38A169' }}>
+                          {fmt(r.risk_reduction)}
+                        </strong>
+                      </div>
+                      <div style={{ height: '1px', background: 'var(--outline-variant)' }} />
+                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <span className="body-xs" style={{ color: 'var(--on-surface-variant)' }}>Payback Period</span>
+                        <strong className="data-mono">
+                          {paybackStr}
+                        </strong>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })}
       </div>
 
       {/* Charts */}
@@ -391,7 +444,9 @@ function CampaignPlanner({ playbook, fmt }) {
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 6, fontSize: 10 }}>
                       <span style={{ color: 'var(--on-surface-variant)' }}>{fmt(action.action_cost ?? action.estimated_cost)}</span>
-                      <span style={{ color: '#ffa600', fontWeight: 700 }}>ROI {action.roi != null ? action.roi.toFixed(1) + '×' : '—'}</span>
+                      <span style={{ color: '#ffa600', fontWeight: 700 }}>
+                        ROI {action.roi != null ? action.roi.toFixed(1) + '×' : '—'}
+                      </span>
                     </div>
                   </div>
                 ))

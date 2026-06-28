@@ -883,7 +883,7 @@ def get_supply_relationships(
     """
     try:
         df = read_table("supply_relationships")
-        df_sup = read_table("suppliers")[["supplier_id", "supplier_name"]]
+        df_sup = read_table("suppliers")[["supplier_id", "supplier_name", "country", "tier"]]
         df_prod = read_table("products")[["product_id", "sku", "product_name", "category"]]
         
         df = df.merge(df_sup, on="supplier_id", how="left")

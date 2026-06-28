@@ -17,6 +17,15 @@ export function ScenarioAnalysis() {
   const [backgroundUpdating, setBackgroundUpdating] = useState(false);
   const [error, setError] = useState(null);
   const [countdown, setCountdown] = useState(10);
+  const [expandedSeverity, setExpandedSeverity] = useState({
+    severe: true,
+    moderate: false,
+    minimal: false
+  });
+
+  const toggleSeverity = (key) => {
+    setExpandedSeverity(prev => ({ ...prev, [key]: !prev[key] }));
+  };
 
   const handleSimulate = async (scenarioId, showFullLoader = true) => {
     if (showFullLoader) {
@@ -306,40 +315,65 @@ export function ScenarioAnalysis() {
           {/* Monte Carlo Distribution Histogram */}
           <MonteCarloHistogram data={simulatedData} scenarioLabel={activeScenarioObj?.label} fmt={fmt} />
 
-          {/* Detailed Statistics Table */}
-
+          {/* Severity Grouped Accordion */}
           <div className="card card--p">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--outline-variant)', paddingBottom: 16, marginBottom: 16 }}>
               <h3 className="title-md">Monte Carlo Distribution Metrics (All Suppliers)</h3>
               <span className="material-symbols-outlined" style={{ color: 'var(--outline-variant)' }}>analytics</span>
             </div>
-            <div style={{ overflowX: 'auto' }}>
-              <table className="data-table" style={{ minWidth: 800 }}>
-                <thead>
-                  <tr>
-                    <th>Supplier Name</th>
-                    <th style={{ textAlign: 'right' }}>Mean Impact</th>
-                    <th style={{ textAlign: 'right' }}>Std Deviation</th>
-                    <th style={{ textAlign: 'right' }}>P50 (Median)</th>
-                    <th style={{ textAlign: 'right' }}>P95 (Value at Risk)</th>
-                    <th style={{ textAlign: 'right' }}>Zero-Impact %</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {sortedRows.map(r => (
-                    <tr key={r.supplier_id}>
-                      <td><strong>{r.supplier_name}</strong></td>
-                      <td className="data-mono" style={{ textAlign: 'right', color: 'var(--on-surface)' }}>{fmt(r.mean_impact)}</td>
-                      <td className="data-mono" style={{ textAlign: 'right', color: 'var(--on-surface-variant)' }}>{fmt(r.std_impact)}</td>
-                      <td className="data-mono" style={{ textAlign: 'right', color: 'var(--primary)' }}>{fmt(r.p50_impact)}</td>
-                      <td className="data-mono" style={{ textAlign: 'right', color: '#ff6b59', fontWeight: 600 }}>{fmt(r.p95_impact)}</td>
-                      <td className="data-mono" style={{ textAlign: 'right', color: 'var(--on-surface-variant)' }}>
-                        {r.zero_impact_fraction != null ? `${(r.zero_impact_fraction * 100).toFixed(1)}%` : '—'}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              {[
+                { key: 'severe', label: '🔴 Severe Impact', count: sortedRows.filter(r => (r.p95_impact || 0) > 1000000).length, data: sortedRows.filter(r => (r.p95_impact || 0) > 1000000), color: '#ff6b59' },
+                { key: 'moderate', label: '🟡 Moderate Impact', count: sortedRows.filter(r => (r.p95_impact || 0) > 100000 && (r.p95_impact || 0) <= 1000000).length, data: sortedRows.filter(r => (r.p95_impact || 0) > 100000 && (r.p95_impact || 0) <= 1000000), color: '#ffa600' },
+                { key: 'minimal', label: '⚪ Minimal Impact', count: sortedRows.filter(r => (r.p95_impact || 0) <= 100000).length, data: sortedRows.filter(r => (r.p95_impact || 0) <= 100000), color: 'var(--on-surface-variant)' }
+              ].map(group => (
+                <div key={group.key} style={{ border: '1px solid var(--outline-variant)', borderRadius: 8, overflow: 'hidden' }}>
+                  <div 
+                    onClick={() => toggleSeverity(group.key)}
+                    style={{ 
+                      display: 'flex', alignItems: 'center', justifyContent: 'space-between', 
+                      padding: '12px 16px', background: 'var(--surface-container-high)', cursor: 'pointer',
+                      borderBottom: expandedSeverity[group.key] ? '1px solid var(--outline-variant)' : 'none'
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <span className="material-symbols-outlined" style={{ fontSize: 18, color: 'var(--on-surface-variant)', transition: 'transform 0.2s', transform: expandedSeverity[group.key] ? 'rotate(90deg)' : 'rotate(0deg)' }}>chevron_right</span>
+                      <strong style={{ fontSize: 14, color: 'var(--on-surface)' }}>{group.label} ({group.count} suppliers)</strong>
+                    </div>
+                  </div>
+                  {expandedSeverity[group.key] && (
+                    <div style={{ background: 'var(--surface)', padding: '0 16px' }}>
+                      {group.data.length > 0 ? (
+                        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                          <thead>
+                            <tr>
+                              <th style={{ textAlign: 'left', padding: '12px 0', borderBottom: '1px solid var(--outline-variant)', color: 'var(--on-surface-variant)', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Supplier Name</th>
+                              <th style={{ textAlign: 'right', padding: '12px 0', borderBottom: '1px solid var(--outline-variant)', color: 'var(--on-surface-variant)', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Mean Impact</th>
+                              <th style={{ textAlign: 'right', padding: '12px 0', borderBottom: '1px solid var(--outline-variant)', color: 'var(--on-surface-variant)', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.05em' }}>P95 (Value at Risk)</th>
+                              <th style={{ textAlign: 'right', padding: '12px 0', borderBottom: '1px solid var(--outline-variant)', color: 'var(--on-surface-variant)', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Zero-Impact %</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {group.data.map(r => (
+                              <tr key={r.supplier_id}>
+                                <td style={{ padding: '10px 0', borderBottom: '1px solid var(--outline-variant)' }}><strong>{r.supplier_name}</strong></td>
+                                <td className="data-mono" style={{ textAlign: 'right', padding: '10px 0', borderBottom: '1px solid var(--outline-variant)', color: 'var(--on-surface)' }}>{fmt(r.mean_impact)}</td>
+                                <td className="data-mono" style={{ textAlign: 'right', padding: '10px 0', borderBottom: '1px solid var(--outline-variant)', color: group.color, fontWeight: 600 }}>{fmt(r.p95_impact)}</td>
+                                <td className="data-mono" style={{ textAlign: 'right', padding: '10px 0', borderBottom: '1px solid var(--outline-variant)', color: 'var(--on-surface-variant)' }}>
+                                  {r.zero_impact_fraction != null ? `${(r.zero_impact_fraction * 100).toFixed(1)}%` : '—'}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      ) : (
+                        <div style={{ padding: '24px', textAlign: 'center', color: 'var(--on-surface-variant)', fontSize: 13 }}>No suppliers in this category.</div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              ))}
             </div>
           </div>
         </>
