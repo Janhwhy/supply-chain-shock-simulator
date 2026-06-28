@@ -1,32 +1,14 @@
-import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { api } from '../api/client';
-import { RiskBadge } from '../components/RiskBadge';
-import { LoadingSpinner, ErrorBox } from '../components/LoadingSpinner';
-import { Treemap, Tooltip, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, PieChart, Pie, Cell } from 'recharts';
+import re
 
+with open('app/src/pages/SupplierRisk.jsx', 'r') as f:
+    content = f.read()
 
-function bandColor(band) {
-  if (!band) return '#8a919c';
-  const b = band.toLowerCase();
-  if (b === 'critical') return '#ff6b59';
-  if (b === 'high')     return '#ffa600';
-  if (b === 'medium')   return '#8b91c7';
-  return '#4299e1';
-}
+# 1. Add imports for Recharts
+import_statement = "import { Treemap, Tooltip, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, PieChart, Pie, Cell } from 'recharts';\n"
+content = content.replace("import { LoadingSpinner, ErrorBox } from '../components/LoadingSpinner';", "import { LoadingSpinner, ErrorBox } from '../components/LoadingSpinner';\n" + import_statement)
 
-export function SupplierRisk() {
-  const navigate = useNavigate();
-  const [suppliers, setSuppliers] = useState([]);
-  const [relationships, setRelationships] = useState([]);
-  const [filtered, setFiltered] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [search, setSearch] = useState('');
-  const [bandFilter, setBandFilter] = useState('');
-  const [sortKey, setSortKey] = useState('total_p95_exposure');
-  const [sortDir, setSortDir] = useState(-1);
-
+# 2. Add State for Toggles, Filters, and Collapsed groups
+state_code = """
   const [activeView, setActiveView] = useState('Table');
   const [chartCountryFilter, setChartCountryFilter] = useState('');
   const [chartTierFilter, setChartTierFilter] = useState('');
@@ -42,50 +24,20 @@ export function SupplierRisk() {
   const toggleGroup = (grp) => {
     setCollapsedGroups(prev => ({ ...prev, [grp]: !prev[grp] }));
   };
+"""
+content = content.replace("const [sortDir, setSortDir] = useState(-1);", "const [sortDir, setSortDir] = useState(-1);\n" + state_code)
 
-
-  useEffect(() => {
-    Promise.all([api.suppliers(), api.relationships()])
-      .then(([s, r]) => { setSuppliers(s); setRelationships(r); setLoading(false); })
-      .catch(e => { setError(e.message); setLoading(false); });
-  }, []);
-
-  // Build single-source map: supplier_id -> true if any product they supply is sole-sourced
-  const singleSourceSupplierIds = new Set();
-  if (relationships.length > 0) {
-    const productSupplierCount = {};
-    relationships.forEach(r => {
-      if (!productSupplierCount[r.product_id]) productSupplierCount[r.product_id] = new Set();
-      productSupplierCount[r.product_id].add(r.supplier_id);
-    });
-    Object.entries(productSupplierCount).forEach(([, supSet]) => {
-      if (supSet.size === 1) {
-        supSet.forEach(sid => singleSourceSupplierIds.add(sid));
-      }
-    });
-  }
-
-  useEffect(() => {
-    let data = [...suppliers];
-    if (search) data = data.filter(s => s.supplier_name?.toLowerCase().includes(search.toLowerCase()) || s.country?.toLowerCase().includes(search.toLowerCase()));
-    if (bandFilter) data = data.filter(s => s.risk_band?.toLowerCase() === bandFilter.toLowerCase());
-    
+# 3. Add filtering logic for the mini charts
+filter_logic = """
     if (chartCountryFilter) data = data.filter(s => s.country === chartCountryFilter);
-    if (chartTierFilter) data = data.filter(s => String(s.tier) === chartTierFilter);
+    if (chartTierFilter) data = data.filter(s => s.tier === chartTierFilter);
     if (chartBandFilter) data = data.filter(s => s.risk_band === chartBandFilter);
-    data.sort((a, b) => sortDir * ((a[sortKey] || 0) - (b[sortKey] || 0)));
-    setFiltered(data);
-  }, [suppliers, search, bandFilter, sortKey, sortDir, chartCountryFilter, chartTierFilter, chartBandFilter]);
+"""
+content = content.replace("data.sort((a, b) => sortDir * ((a[sortKey] || 0) - (b[sortKey] || 0)));", filter_logic + "    data.sort((a, b) => sortDir * ((a[sortKey] || 0) - (b[sortKey] || 0)));")
+content = content.replace("[suppliers, search, bandFilter, sortKey, sortDir]", "[suppliers, search, bandFilter, sortKey, sortDir, chartCountryFilter, chartTierFilter, chartBandFilter]")
 
-  function toggleSort(key) {
-    if (sortKey === key) setSortDir(d => -d);
-    else { setSortKey(key); setSortDir(-1); }
-  }
-
-  if (loading) return <LoadingSpinner message="Loading supplier data…" />;
-  if (error)   return <ErrorBox message={error} />;
-
-  
+# 4. Generate Insight Cards
+insights_code = """
   // Insight computations
   const maxP95Supplier = [...suppliers].sort((a, b) => (b.total_p95_exposure || 0) - (a.total_p95_exposure || 0))[0];
   const criticalCount = suppliers.filter(s => s.priority_quadrant === 'Critical Priority').length;
@@ -95,7 +47,7 @@ export function SupplierRisk() {
     if (s.country) countryCounts[s.country] = (countryCounts[s.country] || 0) + 1;
   });
   const mostFreqCountry = Object.entries(countryCounts).sort((a, b) => b[1] - a[1])[0]?.[0] || 'N/A';
-  const lowResilienceCount = suppliers.filter(s => s.resilience_score != null && s.resilience_score < 0.20).length;
+  const lowResilienceCount = suppliers.filter(s => s.resilience_score < 0.20).length;
 
   const InsightCard = ({ title, value }) => (
     <div style={{ background: '#1a2a4a', borderLeft: '3px solid #dd4d88', borderRadius: 8, padding: 12, flex: 1 }}>
@@ -103,126 +55,22 @@ export function SupplierRisk() {
       <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--on-surface)' }}>{value}</div>
     </div>
   );
+"""
+content = content.replace("function fmt(n) {", insights_code + "\n  function fmt(n) {")
 
-  function fmt(n) {
-    if (n == null) return '—';
-    if (Math.abs(n) >= 1e7) return `₹${(n / 1e7).toFixed(1)} Cr`;
-    if (Math.abs(n) >= 1e5) return `₹${(n / 1e5).toFixed(1)} L`;
-    return n.toFixed(2);
-  }
-
-  // Risk distribution counts
-  const BANDS = ['Critical', 'High', 'Medium', 'Low'];
-
-  // Compute chart data from unfiltered `suppliers`
-  const countryDist = {};
-  suppliers.forEach(s => { if (s.country) countryDist[s.country] = (countryDist[s.country] || 0) + 1; });
-  const countryChartData = Object.entries(countryDist).sort((a, b) => b[1] - a[1]).slice(0, 8).map(([name, value]) => ({ name, value }));
-
-  const tierDist = {};
-  suppliers.forEach(s => { if (s.tier != null) tierDist[s.tier] = (tierDist[s.tier] || 0) + 1; });
-  const tierChartData = Object.entries(tierDist).map(([name, value]) => ({ name: String(name), value }));
-  const tierColors = ['#8b91c7', '#4299e1', '#464c89', '#99cbff'];
-
-  const riskBandOrder = { 'Critical': 1, 'High': 2, 'Medium': 3, 'Low': 4 };
-  const riskBandColors = { 'Critical': '#dd4d88', 'High': '#ff6b59', 'Medium': '#ffa600', 'Low': '#38A169' };
-  const bandDist = {};
-  suppliers.forEach(s => { if (s.risk_band) bandDist[s.risk_band] = (bandDist[s.risk_band] || 0) + 1; });
-  const bandChartData = Object.entries(bandDist).sort((a, b) => riskBandOrder[a[0]] - riskBandOrder[b[0]]).map(([name, value]) => ({ name, value }));
-
-  const bandCounts = {};
-  BANDS.forEach(b => { bandCounts[b] = suppliers.filter(s => s.risk_band === b).length; });
-  const total = suppliers.length || 1;
-
-  return (
-    <>
-      <div className="page-header">
-        <div>
-          <h2 className="headline-lg">Supplier Risk Register</h2>
-          <p className="body-sm" style={{ color: 'var(--on-surface-variant)', marginTop: 4 }}>
-            {total} suppliers ranked by financial exposure and resilience score.
-            &nbsp;·&nbsp;<span style={{ color: '#ff6b59', fontWeight: 700 }}>{bandCounts.Critical} Critical</span>
-            &nbsp;·&nbsp;<span style={{ color: '#ffa600', fontWeight: 600 }}>{bandCounts.High} High</span>
-            &nbsp;·&nbsp;{bandCounts.Medium} Medium
-            &nbsp;·&nbsp;{bandCounts.Low} Low
-          </p>
-        </div>
-      </div>
-
-      {/* Risk Distribution Summary Bar */}
-      <div style={{ marginBottom: 20 }}>
-        <div style={{ display: 'flex', height: 12, borderRadius: 6, overflow: 'hidden', width: '100%', gap: 1 }}>
-          {BANDS.map(b => {
-            const pct = (bandCounts[b] / total) * 100;
-            if (pct === 0) return null;
-            return (
-              <div
-                key={b}
-                onClick={() => setBandFilter(bandFilter === b ? '' : b)}
-                style={{
-                  width: `${pct}%`,
-                  background: bandColor(b),
-                  cursor: 'pointer',
-                  opacity: bandFilter && bandFilter !== b ? 0.3 : 1,
-                  transition: 'opacity 0.2s',
-                }}
-                title={`${b}: ${bandCounts[b]} suppliers (${pct.toFixed(1)}%)`}
-              />
-            );
-          })}
-        </div>
-        <div style={{ display: 'flex', gap: 20, marginTop: 8 }}>
-          {BANDS.map(b => (
-            <div
-              key={b}
-              onClick={() => setBandFilter(bandFilter === b ? '' : b)}
-              style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', opacity: bandFilter && bandFilter !== b ? 0.5 : 1 }}
-            >
-              <div style={{ width: 10, height: 10, borderRadius: '50%', background: bandColor(b) }} />
-              <span style={{ fontSize: 11, color: 'var(--on-surface-variant)', fontWeight: 600 }}>
-                {b} ({bandCounts[b]})
-              </span>
-            </div>
-          ))}
-          {bandFilter && (
-            <button
-              onClick={() => setBandFilter('')}
-              style={{ fontSize: 11, color: 'var(--primary)', background: 'none', border: 'none', cursor: 'pointer', marginLeft: 'auto', fontWeight: 600 }}
-            >
-              Clear filter ×
-            </button>
-          )}
-        </div>
-      </div>
-
-      
+# 5. Insert Insight Cards after Risk Distribution Summary Bar
+insight_cards_ui = """
       <div style={{ display: 'flex', gap: 16, marginBottom: 24 }}>
         <InsightCard title="Highest P95 Exposure" value={maxP95Supplier ? `${maxP95Supplier.supplier_name} (${fmt(maxP95Supplier.total_p95_exposure)})` : 'N/A'} />
         <InsightCard title="Critical Priority Suppliers" value={criticalCount} />
         <InsightCard title="Top Country for Critical" value={mostFreqCountry} />
         <InsightCard title="Resilience < 0.20" value={lowResilienceCount} />
       </div>
+"""
+content = content.replace("{/* Search + Filter controls */}", insight_cards_ui + "\n      {/* Search + Filter controls */}")
 
-      {/* Search + Filter controls */}
-      <div style={{ display: 'flex', gap: 12, marginBottom: 24, flexWrap: 'wrap' }}>
-        <input
-          type="text" placeholder="Search supplier or country…" value={search}
-          onChange={e => setSearch(e.target.value)}
-          style={{ background: 'var(--surface-container)', border: '1px solid var(--outline-variant)', color: 'var(--on-surface)', borderRadius: 4, padding: '8px 16px', fontSize: 14, flex: '1 1 200px', outline: 'none' }}
-        />
-        <select
-          value={bandFilter} onChange={e => setBandFilter(e.target.value)}
-          style={{ background: 'var(--surface-container)', border: '1px solid var(--outline-variant)', color: 'var(--on-surface)', borderRadius: 4, padding: '8px 16px', fontSize: 14 }}
-        >
-          <option value="">All Risk Bands</option>
-          {BANDS.map(b => <option key={b} value={b}>{b}</option>)}
-        </select>
-        <span className="label-caps" style={{ alignSelf: 'center', color: 'var(--on-surface-variant)' }}>
-          {filtered.length} of {total} suppliers {filtered.length === 0 && '— Try adjusting your search'}
-        </span>
-      </div>
-
-      
+# 6. Insert View Toggles
+view_toggles_ui = """
       <div style={{ display: 'flex', gap: 12, marginBottom: 16 }}>
         {['Treemap', 'Triage', 'Table'].map(view => (
           <button
@@ -239,32 +87,76 @@ export function SupplierRisk() {
           </button>
         ))}
       </div>
+"""
+content = content.replace("<div className=\"card\" style={{ overflow: 'auto' }}>", view_toggles_ui + "\n      <div className=\"card\" style={{ overflow: 'auto' }}>")
 
-      {activeView === 'Table' && (
-      <div className="card" style={{ overflow: 'auto' }}>
-        <table className="data-table" style={{ minWidth: 900 }}>
-          <thead>
-            <tr>
-              <th>Supplier Name</th>
-              <th>Country</th>
-              <th>Tier</th>
-              <th>Risk Band</th>
-              <th>Priority Quadrant</th>
-              <th style={{ cursor: 'pointer' }} onClick={() => toggleSort('composite_score')}>
-                Composite Score (higher = riskier) {sortKey === 'composite_score' ? (sortDir === -1 ? '↓' : '↑') : ''}
-              </th>
-              <th style={{ cursor: 'pointer' }} onClick={() => toggleSort('resilience_score')}>
-                Resilience (0–1) {sortKey === 'resilience_score' ? (sortDir === -1 ? '↓' : '↑') : ''}
-              </th>
-              <th style={{ cursor: 'pointer' }} onClick={() => toggleSort('total_p95_exposure')}>
-                P95 Worst-Case Loss {sortKey === 'total_p95_exposure' ? (sortDir === -1 ? '↓' : '↑') : ''}
-              </th>
-              <th title="This supplier is the sole source for one or more products — any disruption halts production directly">
-                Sole Source
-              </th>
-            </tr>
-          </thead>
-          <tbody>
+# 7. Add conditional rendering for Table
+content = content.replace("<table className=\"data-table\"", "{activeView === 'Table' && (\n        <table className=\"data-table\"")
+
+# 8. Modify Table body for grouped rendering
+old_tbody = """          <tbody>
+            {filtered.map(s => {
+              const color = bandColor(s.risk_band);
+              const isSoleSource = singleSourceSupplierIds.has(s.supplier_id);
+              return (
+                <tr
+                  key={s.supplier_id}
+                  onClick={() => navigate(`/suppliers/${s.supplier_id}`)}
+                  style={{ cursor: 'pointer', transition: 'background 0.2s' }}
+                  onMouseEnter={e => e.currentTarget.style.background = 'var(--surface-container)'}
+                  onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                  title="Click to view full supplier profile →"
+                >
+                  <td>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <strong style={{ color: 'var(--on-surface)' }}>{s.supplier_name}</strong>
+                      <span className="material-symbols-outlined hover-arrow" style={{ fontSize: 16, color: 'var(--primary)', opacity: 0.5 }}>arrow_forward</span>
+                    </div>
+                  </td>
+                  <td className="data-mono" style={{ color: 'var(--on-surface-variant)' }}>{s.country}</td>
+                  <td style={{ color: 'var(--on-surface-variant)' }}>{s.tier != null ? `Tier ${s.tier}` : '—'}</td>
+                  <td>{s.risk_band ? <RiskBadge riskBand={s.risk_band} /> : '—'}</td>
+                  <td>{s.priority_quadrant ? <RiskBadge quadrant={s.priority_quadrant} /> : '—'}</td>
+                  <td>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <div style={{ width: 48, height: 5, borderRadius: 3, background: 'var(--surface-container-high)', overflow: 'hidden' }}>
+                        <div style={{ width: `${((s.composite_score || 0) * 100).toFixed(0)}%`, height: '100%', background: color }} />
+                      </div>
+                      <span className="data-mono" style={{ color, fontSize: 12 }}>{s.composite_score != null ? s.composite_score.toFixed(3) : '—'}</span>
+                    </div>
+                  </td>
+                  <td>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <div style={{ width: 48, height: 5, borderRadius: 3, background: 'var(--surface-container-high)', overflow: 'hidden' }}>
+                        <div style={{ width: `${((s.resilience_score || 0) * 100).toFixed(0)}%`, height: '100%', background: 'var(--primary)' }} />
+                      </div>
+                      <span className="data-mono" style={{ color: 'var(--primary)', fontSize: 12 }}>{s.resilience_score != null ? s.resilience_score.toFixed(3) : '—'}</span>
+                    </div>
+                  </td>
+                  <td className="data-mono" style={{ color, fontWeight: 600 }}>{fmt(s.total_p95_exposure)}</td>
+                  <td style={{ textAlign: 'center' }}>
+                    {isSoleSource ? (
+                      <span
+                        style={{
+                          display: 'inline-flex', alignItems: 'center', gap: 3,
+                          background: 'rgba(255,107,89,0.12)', border: '1px solid rgba(255,107,89,0.3)',
+                          color: '#ff6b59', borderRadius: 4, padding: '2px 7px', fontSize: 11, fontWeight: 700,
+                        }}
+                        title="This supplier is the sole source for one or more products — any disruption halts production directly"
+                      >
+                        <span className="material-symbols-outlined" style={{ fontSize: 12 }}>warning</span>
+                        Sole Source
+                      </span>
+                    ) : (
+                      <span style={{ color: 'var(--outline)', fontSize: 11 }}>—</span>
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>"""
+
+new_tbody = """          <tbody>
             {['Critical Priority', 'Monitor Closely', 'Contingency Plan', 'Routine Review'].map(quadrant => {
               const groupData = filtered.filter(s => s.priority_quadrant === quadrant);
               if (groupData.length === 0) return null;
@@ -343,13 +235,15 @@ export function SupplierRisk() {
                 </React.Fragment>
               );
             })}
-          </tbody>
-        </table>
-      </div>
-      )}
+          </tbody>"""
 
+content = content.replace(old_tbody, new_tbody)
+content = content.replace("        </table>", "        </table>\n      )}")
+
+# 9. Add Treemap and Triage views
+views_code = """
       {activeView === 'Treemap' && (
-        <div className="card card--p" style={{ padding: '16px', height: 500 }}>
+        <div style={{ width: '100%', height: 500 }}>
           <ResponsiveContainer width="100%" height="100%">
             <Treemap
               data={filtered.map(s => ({
@@ -411,7 +305,7 @@ export function SupplierRisk() {
                 </div>
                 <div style={{ display: 'flex', gap: 12, overflowX: 'auto', paddingBottom: 8 }}>
                   {laneSuppliers.map(s => (
-                    <div key={s.supplier_id} onClick={() => navigate(`/suppliers/${s.supplier_id}`)} style={{ background: '#1a2a4a', borderRadius: 8, padding: 12, minWidth: 200, flexShrink: 0, cursor: 'pointer' }}>
+                    <div key={s.supplier_id} style={{ background: '#1a2a4a', borderRadius: 8, padding: 12, minWidth: 200, flexShrink: 0 }}>
                       <div style={{ fontWeight: 700, fontSize: 13, color: 'white', marginBottom: 4 }}>{s.supplier_name}</div>
                       <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 12 }}>
                         <span style={{ fontSize: 11, color: 'var(--on-surface-variant)' }}>{s.country}</span>
@@ -438,8 +332,33 @@ export function SupplierRisk() {
           })}
         </div>
       )}
+"""
+
+content = content.replace("    </>\n  );\n}", "    </div>\n" + views_code + "    </>\n  );\n}")
+
+# 10. Mini Charts Generation
+charts_logic = """
+  // Compute chart data from unfiltered `suppliers`
+  const countryDist = {};
+  suppliers.forEach(s => { if (s.country) countryDist[s.country] = (countryDist[s.country] || 0) + 1; });
+  const countryChartData = Object.entries(countryDist).sort((a, b) => b[1] - a[1]).slice(0, 8).map(([name, value]) => ({ name, value }));
+
+  const tierDist = {};
+  suppliers.forEach(s => { if (s.tier) tierDist[s.tier] = (tierDist[s.tier] || 0) + 1; });
+  const tierChartData = Object.entries(tierDist).map(([name, value]) => ({ name, value }));
+  const tierColors = ['#8b91c7', '#4299e1', '#464c89', '#99cbff'];
+
+  const riskBandOrder = { 'Critical': 1, 'High': 2, 'Medium': 3, 'Low': 4 };
+  const riskBandColors = { 'Critical': '#dd4d88', 'High': '#ff6b59', 'Medium': '#ffa600', 'Low': '#38A169' };
+  const bandDist = {};
+  suppliers.forEach(s => { if (s.risk_band) bandDist[s.risk_band] = (bandDist[s.risk_band] || 0) + 1; });
+  const bandChartData = Object.entries(bandDist).sort((a, b) => riskBandOrder[a[0]] - riskBandOrder[b[0]]).map(([name, value]) => ({ name, value }));
+"""
+
+content = content.replace("const BANDS = ['Critical', 'High', 'Medium', 'Low'];", "const BANDS = ['Critical', 'High', 'Medium', 'Low'];\n" + charts_logic)
 
 
+charts_ui = """
       {/* Mini Charts */}
       {(chartCountryFilter || chartTierFilter || chartBandFilter) && (
         <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: -16, position: 'relative', zIndex: 10 }}>
@@ -487,7 +406,7 @@ export function SupplierRisk() {
               <YAxis hide />
               <Bar dataKey="value" onClick={(d) => setChartBandFilter(chartBandFilter === d.name ? '' : d.name)} cursor="pointer">
                 {bandChartData.map((e, i) => (
-                  <Cell key={`cell-${i}`} fill={riskBandColors[e.name] || 'var(--primary)'} opacity={chartBandFilter && chartBandFilter !== e.name ? 0.3 : 1} />
+                  <Cell key={`cell-${i}`} fill={riskBandColors[e.name]} opacity={chartBandFilter && chartBandFilter !== e.name ? 0.3 : 1} />
                 ))}
               </Bar>
             </BarChart>
@@ -495,8 +414,8 @@ export function SupplierRisk() {
         </div>
 
       </div>
+"""
+content = content.replace("    </>\n  );\n}", charts_ui + "\n    </>\n  );\n}")
 
-    </>
-  );
-}
-
+with open('app/src/pages/SupplierRisk.jsx', 'w') as f:
+    f.write(content)
