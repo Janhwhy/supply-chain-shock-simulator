@@ -1,2 +1,2 @@
-dependency,geographic,reliability,substitutability
-0.22,0.0,0.0,0.78
+dependency,geographic,reliability,substitutability,revenue_weighted
+0.0,0.0,0.0,0.0,1.0

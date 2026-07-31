@@ -62,6 +62,7 @@ METHODS = [
     "dependency_only",
     "pagerank_only",
     "reliability_only",
+    "revenue_weighted_only",
     "random",
 ]
 
@@ -174,11 +175,26 @@ def compute_ground_truth(df_enriched, df_relationships, df_products, n_runs, see
     return exposure
 
 
+def compute_revenue_weighted_risk(df_relationships, df_products):
+    """Supply-share concentration weighted by the actual revenue it represents
+    (unit_cost x monthly_demand), summed per supplier and min-max normalized.
+    Unlike dependency_only (raw max supply-share), this captures that a small
+    share of a high-revenue product can matter more than a large share of a
+    low-revenue one — the signal the Monte Carlo ground truth is dominated by."""
+    merged = pd.merge(df_relationships, df_products, on="product_id")
+    merged["revenue_exposure"] = merged["supply_share"] * merged["unit_cost"] * merged["monthly_demand"]
+    raw = merged.groupby("supplier_id")["revenue_exposure"].sum()
+    s_min, s_max = raw.min(), raw.max()
+    if s_max == s_min:
+        return pd.Series(0.0, index=raw.index)
+    return (raw - s_min) / (s_max - s_min)
+
+
 # ---------------------------------------------------------------------------
 # Method scores (risk direction: higher = riskier), each indexed by supplier_id
 # ---------------------------------------------------------------------------
 
-def compute_method_scores(df_suppliers, df_enriched, df_relationships, df_pagerank, rng):
+def compute_method_scores(df_suppliers, df_enriched, df_relationships, df_products, df_pagerank, rng):
     scores = {}
 
     df_scored = sc.compute_resilience_scores(
@@ -203,6 +219,8 @@ def compute_method_scores(df_suppliers, df_enriched, df_relationships, df_pagera
 
     reliability_risk = 1.0 - df_enriched.set_index("supplier_id")["reliability_score"]
     scores["reliability_only"] = reliability_risk
+
+    scores["revenue_weighted_only"] = compute_revenue_weighted_risk(df_relationships, df_products)
 
     all_ids = df_suppliers["supplier_id"].to_numpy()
     scores["random"] = pd.Series(rng.permutation(len(all_ids)).astype(float), index=all_ids)
@@ -286,7 +304,7 @@ def run_experiment(n_seeds, n_runs, k, out_dir):
             df_enriched, df_relationships, df_products, n_runs=n_runs, seed=seed
         )
         method_scores = compute_method_scores(
-            df_suppliers, df_enriched, df_relationships, df_pagerank, rng
+            df_suppliers, df_enriched, df_relationships, df_products, df_pagerank, rng
         )
         df_metrics = evaluate_methods(method_scores, ground_truth, k)
         df_metrics["seed"] = seed

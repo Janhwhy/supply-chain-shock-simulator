@@ -1,34 +1,44 @@
-"""learn_weights.py — Fits the four resilience-score weights (dependency,
-geographic, reliability, substitutability) to data instead of hand-picking
-them, and evaluates the learned scorecard on held-out seeds against every
-baseline from eval_harness.py.
+"""learn_weights.py — Fits the resilience-score weights to data instead of
+hand-picking them, and evaluates the learned scorecard on held-out seeds
+against every baseline from eval_harness.py.
 
 Motivation (see evaluation/results/ from eval_harness.py):
-The default hand-set weights (0.40 / 0.25 / 0.20 / 0.15) rank suppliers
-*worse* than a single concentration metric (dependency_only) when measured
-against realized P95 revenue-at-risk from the Monte Carlo simulation. The
-functional form (a convex combination of the four risk factors) is kept
-identical to src/scoring.py — only the weights are learned.
+The default hand-set weights (0.40 / 0.25 / 0.20 / 0.15 over dependency /
+geographic / reliability / substitutability) rank suppliers *worse* than a
+single concentration metric (dependency_only) when measured against realized
+P95 revenue-at-risk from the Monte Carlo simulation. A follow-up "noise
+ceiling" check (evaluation/ceiling_check.py) showed the ground-truth ranking
+is highly stable across independent simulation draws (~0.98 Precision@10
+self-consistency), meaning the low scores above reflect a real, closeable
+gap rather than inherent randomness in the task.
+
+That motivated adding a 5th risk factor, revenue_weighted (supply-share
+concentration weighted by the product's actual revenue — unit_cost x
+monthly_demand — rather than raw share alone), since the simulator's
+ground truth is dominated by revenue-weighted exposure. The functional form
+(a convex combination of risk factors) is otherwise kept identical to
+src/scoring.py — only the weights (and now this one added factor) are
+learned/fit to data.
 
 Method
 ------
 1. Train on seeds [0, n_train): for each seed, bootstrap-resample the
-   transaction history, recompute the four raw risk-factor series
-   (dependency/geographic/reliability/substitutability — same functions as
-   src/scoring.py), and run the full Monte Carlo simulation for ground truth
-   (total P95 exposure per supplier).
+   transaction history, recompute the five raw risk-factor series
+   (dependency/geographic/reliability/substitutability/revenue_weighted),
+   and run the full Monte Carlo simulation for ground truth (total P95
+   exposure per supplier).
 2. Optimize weights on the simplex (non-negative, sum to 1) via an exhaustive
    vectorized grid search (step = 1/resolution) that maximizes the mean
    Spearman rank correlation between the weighted composite risk and
    ground-truth exposure, averaged over the training seeds. Grid search is
    used instead of gradient-based optimization because rank correlation is
-   piecewise-constant (not differentiable) and the simplex is only
-   4-dimensional, so exhaustive search is both feasible and exact up to the
-   chosen resolution.
+   piecewise-constant (not differentiable) and the simplex is low-dimensional,
+   so exhaustive search is feasible and exact up to the chosen resolution.
 3. Evaluate the learned weights, unchanged, on completely disjoint held-out
    seeds [n_train, n_train + n_test) — no leakage — using the same metrics
    and baselines as eval_harness.py (Spearman, Precision@K, NDCG@K, paired
-   Wilcoxon signed-rank test against each baseline).
+   Wilcoxon signed-rank test against each baseline), plus the standalone
+   revenue_weighted_only baseline.
 
 Usage:
     python evaluation/learn_weights.py --n-train 20 --n-test 20 --n-runs 5000 --k 10
@@ -51,6 +61,7 @@ from eval_harness import (
     build_enriched_suppliers,
     compute_ground_truth,
     compute_method_scores,
+    compute_revenue_weighted_risk,
     precision_at_k,
     ndcg_at_k,
 )
@@ -58,7 +69,14 @@ from src import scoring as sc
 from src import graph as gr
 
 OUT_DIR = os.path.join(os.path.dirname(__file__), "results")
-FACTOR_NAMES = ["dependency", "geographic", "reliability", "substitutability"]
+FACTOR_NAMES = ["dependency", "geographic", "reliability", "substitutability", "revenue_weighted"]
+DEFAULT_WEIGHTS_FOR_DISPLAY = {
+    "dependency": 0.40,
+    "geographic": 0.25,
+    "reliability": 0.20,
+    "substitutability": 0.15,
+    "revenue_weighted": None,  # not present in the original hand-tuned scorecard
+}
 
 
 # ---------------------------------------------------------------------------
@@ -66,11 +84,12 @@ FACTOR_NAMES = ["dependency", "geographic", "reliability", "substitutability"]
 # src/scoring.py::compute_resilience_scores, exposed individually.
 # ---------------------------------------------------------------------------
 
-def compute_risk_factor_matrix(df_suppliers, df_enriched, df_relationships):
+def compute_risk_factor_matrix(df_suppliers, df_enriched, df_relationships, df_products):
     dependency = sc.compute_dependency_risk(df_relationships)
     geographic = sc.compute_geographic_risk(df_suppliers)
     reliability = sc.compute_reliability_risk(df_enriched)
     substitutability = sc.compute_substitutability_risk(df_relationships)
+    revenue_weighted = compute_revenue_weighted_risk(df_relationships, df_products)
 
     df = pd.DataFrame(
         {
@@ -78,6 +97,7 @@ def compute_risk_factor_matrix(df_suppliers, df_enriched, df_relationships):
             "geographic": geographic,
             "reliability": reliability,
             "substitutability": substitutability,
+            "revenue_weighted": revenue_weighted,
         }
     )
     df.index.name = "supplier_id"
@@ -91,7 +111,7 @@ def build_seed_records(seeds, df_suppliers, df_products, df_relationships,
         rng = np.random.default_rng(seed)
         df_enriched = build_enriched_suppliers(df_suppliers, delay_by_supplier, rej_by_supplier, rng)
         ground_truth = compute_ground_truth(df_enriched, df_relationships, df_products, n_runs=n_runs, seed=seed)
-        factor_matrix = compute_risk_factor_matrix(df_suppliers, df_enriched, df_relationships)
+        factor_matrix = compute_risk_factor_matrix(df_suppliers, df_enriched, df_relationships, df_products)
         records.append({"seed": seed, "df_enriched": df_enriched, "ground_truth": ground_truth, "factors": factor_matrix})
         print(f"  [{label}] seed {seed} prepared "
               f"(ground truth suppliers={len(ground_truth)})")
@@ -130,7 +150,7 @@ def _rank_columns(mat):
     return ranks
 
 
-def optimize_weights(train_records, resolution=50):
+def optimize_weights(train_records, resolution=25):
     """Exhaustive grid search over the 4-dim weight simplex (step = 1/resolution),
     maximizing mean Spearman correlation with ground-truth exposure across train seeds.
     Vectorized: evaluates every grid point against every seed in one shot per seed."""
@@ -167,12 +187,12 @@ def optimize_weights(train_records, resolution=50):
 # ---------------------------------------------------------------------------
 
 def evaluate_all_methods_on_record(rec, learned_weights, df_pagerank, df_suppliers,
-                                    df_relationships, k, rng):
+                                    df_relationships, df_products, k, rng):
     ground_truth = rec["ground_truth"]
     factors = rec["factors"]
     df_enriched = rec["df_enriched"]
 
-    method_scores = compute_method_scores(df_suppliers, df_enriched, df_relationships, df_pagerank, rng)
+    method_scores = compute_method_scores(df_suppliers, df_enriched, df_relationships, df_products, df_pagerank, rng)
 
     w = np.array([learned_weights[f] for f in FACTOR_NAMES])
     method_scores["composite_learned"] = pd.Series(
@@ -230,8 +250,9 @@ def run(n_train, n_test, n_runs, k, out_dir):
     learned_weights, train_spearman = optimize_weights(train_records)
     print("Learned weights:")
     for name in FACTOR_NAMES:
-        print(f"  {name:<18} {learned_weights[name]:.4f}  (default: "
-              f"{ {'dependency':0.40,'geographic':0.25,'reliability':0.20,'substitutability':0.15}[name]:.2f})")
+        default_val = DEFAULT_WEIGHTS_FOR_DISPLAY[name]
+        default_str = f"{default_val:.2f}" if default_val is not None else "n/a (new factor)"
+        print(f"  {name:<18} {learned_weights[name]:.4f}  (default: {default_str})")
     print(f"Mean train Spearman achieved: {train_spearman:.4f}")
 
     pd.DataFrame([learned_weights]).to_csv(os.path.join(out_dir, "learned_weights.csv"), index=False)
@@ -241,7 +262,7 @@ def run(n_train, n_test, n_runs, k, out_dir):
     for rec in test_records:
         rng = np.random.default_rng(rec["seed"] + 100000)
         df_metrics = evaluate_all_methods_on_record(
-            rec, learned_weights, df_pagerank, df_suppliers, df_relationships, k, rng
+            rec, learned_weights, df_pagerank, df_suppliers, df_relationships, df_products, k, rng
         )
         all_rows.append(df_metrics)
 
