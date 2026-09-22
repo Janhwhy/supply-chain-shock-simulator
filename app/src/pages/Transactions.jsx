@@ -125,24 +125,24 @@ export function Transactions() {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16, marginBottom: 24 }}>
         <div className="card card--p" style={{ borderLeft: '4px solid var(--primary)' }}>
           <div className="label-caps" style={{ color: 'var(--on-surface-variant)' }}>On-Time Delivery (OTDR)</div>
-          <div className="display-sm" style={{ margin: '8px 0', fontWeight: 700, color: onTimeDeliveryRate < 80 ? '#ff6b59' : 'var(--primary)' }}>
+          <div className="display-sm" style={{ margin: '8px 0', fontWeight: 700, color: onTimeDeliveryRate < 80 ? 'var(--risk-critical)' : 'var(--primary)' }}>
             {onTimeDeliveryRate.toFixed(1)}%
           </div>
           <div className="body-xs" style={{ color: 'var(--on-surface-variant)' }}>Orders arriving by promise date</div>
         </div>
-        <div className="card card--p" style={{ borderLeft: '4px solid #ff6b59' }}>
+        <div className="card card--p" style={{ borderLeft: '4px solid var(--risk-critical)' }}>
           <div className="label-caps" style={{ color: 'var(--on-surface-variant)' }}>Defect Rejection Rate</div>
-          <div className="display-sm" style={{ margin: '8px 0', fontWeight: 700, color: avgRejectionRate > 2 ? '#ff6b59' : 'var(--on-surface)' }}>
+          <div className="display-sm" style={{ margin: '8px 0', fontWeight: 700, color: avgRejectionRate > 2 ? 'var(--risk-critical)' : 'var(--on-surface)' }}>
             {avgRejectionRate.toFixed(2)}%
           </div>
           <div className="body-xs" style={{ color: 'var(--on-surface-variant)' }}>Total rejected units fraction</div>
         </div>
-        <div className="card card--p" style={{ borderLeft: '4px solid #ffa600' }}>
+        <div className="card card--p" style={{ borderLeft: '4px solid var(--risk-high)' }}>
           <div className="label-caps" style={{ color: 'var(--on-surface-variant)' }}>Average Delay Time</div>
           <div className="display-sm" style={{ margin: '8px 0', fontWeight: 700 }}>{avgDelay.toFixed(1)} Days</div>
           <div className="body-xs" style={{ color: 'var(--on-surface-variant)' }}>Mean delivery schedule slip</div>
         </div>
-        <div className="card card--p" style={{ borderLeft: '4px solid #8b91c7' }}>
+        <div className="card card--p" style={{ borderLeft: '4px solid var(--ml-accent)' }}>
           <div className="label-caps" style={{ color: 'var(--on-surface-variant)' }}>Orders Logged</div>
           <div className="display-sm" style={{ margin: '8px 0', fontWeight: 700 }}>{fmtNumber(totalOrders)}</div>
           <div className="body-xs" style={{ color: 'var(--on-surface-variant)' }}>Total visible transaction rows</div>
@@ -264,12 +264,12 @@ export function Transactions() {
                 <td className="data-mono" style={{ fontSize: 12 }}>{fmtDate(t.order_date)}</td>
                 <td className="data-mono" style={{ fontSize: 12 }}>{fmtDate(t.promised_delivery_date)}</td>
                 <td className="data-mono" style={{ fontSize: 12 }}>{fmtDate(t.actual_delivery_date)}</td>
-                <td className="data-mono" style={{ textAlign: 'right', fontWeight: t.delayDays > 0 ? 600 : undefined, color: t.delayDays > 5 ? '#ff6b59' : t.delayDays > 0 ? '#ffa600' : 'var(--primary)' }}>
+                <td className="data-mono" style={{ textAlign: 'right', fontWeight: t.delayDays > 0 ? 600 : undefined, color: t.delayDays > 5 ? 'var(--risk-critical)' : t.delayDays > 0 ? 'var(--risk-high)' : 'var(--primary)' }}>
                   {t.delayDays > 0 ? `+${t.delayDays}d` : '0d'}
                 </td>
                 <td className="data-mono" style={{ textAlign: 'right' }}>{fmtNumber(t.quantity_ordered)}</td>
                 <td className="data-mono" style={{ textAlign: 'right' }}>{fmtNumber(t.quantity_delivered)}</td>
-                <td className="data-mono" style={{ textAlign: 'right', fontWeight: t.quantity_rejected > 0 ? 600 : undefined, color: t.quantity_rejected > 0 ? '#ff6b59' : 'var(--on-surface-variant)' }}>
+                <td className="data-mono" style={{ textAlign: 'right', fontWeight: t.quantity_rejected > 0 ? 600 : undefined, color: t.quantity_rejected > 0 ? 'var(--risk-critical)' : 'var(--on-surface-variant)' }}>
                   {t.quantity_rejected > 0 ? `${fmtNumber(t.quantity_rejected)} (${t.rejectionRate.toFixed(1)}%)` : '0'}
                 </td>
               </tr>

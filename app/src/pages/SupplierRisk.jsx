@@ -7,12 +7,12 @@ import { Treemap, Tooltip, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Pie
 
 
 function bandColor(band) {
-  if (!band) return '#8a919c';
+  if (!band) return 'var(--outline)';
   const b = band.toLowerCase();
-  if (b === 'critical') return '#ff6b59';
-  if (b === 'high')     return '#ffa600';
-  if (b === 'medium')   return '#8b91c7';
-  return '#4299e1';
+  if (b === 'critical') return 'var(--risk-critical)';
+  if (b === 'high')     return 'var(--risk-high)';
+  if (b === 'medium')   return 'var(--risk-medium)';
+  return 'var(--risk-low)';
 }
 
 export function SupplierRisk() {
@@ -30,8 +30,7 @@ export function SupplierRisk() {
   const [activeView, setActiveView] = useState('Table');
   const [chartCountryFilter, setChartCountryFilter] = useState('');
   const [chartTierFilter, setChartTierFilter] = useState('');
-  const [chartBandFilter, setChartBandFilter] = useState('');
-  
+
   const [collapsedGroups, setCollapsedGroups] = useState({
     'Critical Priority': false,
     'Monitor Closely': false,
@@ -72,10 +71,9 @@ export function SupplierRisk() {
     
     if (chartCountryFilter) data = data.filter(s => s.country === chartCountryFilter);
     if (chartTierFilter) data = data.filter(s => String(s.tier) === chartTierFilter);
-    if (chartBandFilter) data = data.filter(s => s.risk_band === chartBandFilter);
     data.sort((a, b) => sortDir * ((a[sortKey] || 0) - (b[sortKey] || 0)));
     setFiltered(data);
-  }, [suppliers, search, bandFilter, sortKey, sortDir, chartCountryFilter, chartTierFilter, chartBandFilter]);
+  }, [suppliers, search, bandFilter, sortKey, sortDir, chartCountryFilter, chartTierFilter]);
 
   function toggleSort(key) {
     if (sortKey === key) setSortDir(d => -d);
@@ -98,7 +96,7 @@ export function SupplierRisk() {
   const lowResilienceCount = suppliers.filter(s => s.resilience_score != null && s.resilience_score < 0.20).length;
 
   const InsightCard = ({ title, value }) => (
-    <div style={{ background: 'var(--component-bg-focus)', borderLeft: '3px solid #dd4d88', borderRadius: 8, padding: 12, flex: 1 }}>
+    <div style={{ background: 'var(--component-bg-focus)', borderLeft: '3px solid var(--accent)', borderRadius: 8, padding: 12, flex: 1 }}>
       <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--on-surface-variant)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{title}</div>
       <div style={{ fontSize: 20, fontWeight: 700, color: 'var(--on-surface)' }}>{value}</div>
     </div>
@@ -122,13 +120,7 @@ export function SupplierRisk() {
   const tierDist = {};
   suppliers.forEach(s => { if (s.tier != null) tierDist[s.tier] = (tierDist[s.tier] || 0) + 1; });
   const tierChartData = Object.entries(tierDist).map(([name, value]) => ({ name: String(name), value }));
-  const tierColors = ['#8b91c7', '#4299e1', '#464c89', '#99cbff'];
-
-  const riskBandOrder = { 'Critical': 1, 'High': 2, 'Medium': 3, 'Low': 4 };
-  const riskBandColors = { 'Critical': '#dd4d88', 'High': '#ff6b59', 'Medium': '#ffa600', 'Low': '#38A169' };
-  const bandDist = {};
-  suppliers.forEach(s => { if (s.risk_band) bandDist[s.risk_band] = (bandDist[s.risk_band] || 0) + 1; });
-  const bandChartData = Object.entries(bandDist).sort((a, b) => riskBandOrder[a[0]] - riskBandOrder[b[0]]).map(([name, value]) => ({ name, value }));
+  const tierColors = ['var(--ml-accent)', 'var(--risk-medium)', 'var(--accent)', 'var(--risk-low)'];
 
   const bandCounts = {};
   BANDS.forEach(b => { bandCounts[b] = suppliers.filter(s => s.risk_band === b).length; });
@@ -158,8 +150,8 @@ export function SupplierRisk() {
           <h2 className="headline-lg">Supplier Risk Register</h2>
           <p className="body-sm" style={{ color: 'var(--on-surface-variant)', marginTop: 4 }}>
             {total} suppliers ranked by financial exposure and resilience score.
-            &nbsp;·&nbsp;<span style={{ color: '#ff6b59', fontWeight: 700 }}>{bandCounts.Critical} Critical</span>
-            &nbsp;·&nbsp;<span style={{ color: '#ffa600', fontWeight: 600 }}>{bandCounts.High} High</span>
+            &nbsp;·&nbsp;<span style={{ color: 'var(--risk-critical)', fontWeight: 700 }}>{bandCounts.Critical} Critical</span>
+            &nbsp;·&nbsp;<span style={{ color: 'var(--risk-high)', fontWeight: 600 }}>{bandCounts.High} High</span>
             &nbsp;·&nbsp;{bandCounts.Medium} Medium
             &nbsp;·&nbsp;{bandCounts.Low} Low
           </p>
@@ -247,8 +239,8 @@ export function SupplierRisk() {
             onClick={() => setActiveView(view)}
             style={{
               padding: '6px 16px', borderRadius: 100, fontSize: 13, fontWeight: 600, border: '1px solid', cursor: 'pointer',
-              background: activeView === view ? '#954e9b' : 'var(--component-bg-focus)',
-              borderColor: activeView === view ? '#954e9b' : 'var(--outline-variant)',
+              background: activeView === view ? 'var(--accent)' : 'var(--component-bg-focus)',
+              borderColor: activeView === view ? 'var(--accent)' : 'var(--outline-variant)',
               color: activeView === view ? 'var(--text-inverse)' : 'var(--on-surface)', transition: 'all 0.2s'
             }}
           >
@@ -289,7 +281,7 @@ export function SupplierRisk() {
               const groupData = filtered.filter(s => s.priority_quadrant === quadrant);
               if (groupData.length === 0) return null;
               
-              const qColor = quadrant === 'Critical Priority' ? '#dd4d88' : quadrant === 'Monitor Closely' ? '#ff6b59' : quadrant === 'Contingency Plan' ? '#ffa600' : '#38A169';
+              const qColor = quadrant === 'Critical Priority' ? 'var(--risk-critical)' : quadrant === 'Monitor Closely' ? 'var(--risk-high)' : quadrant === 'Contingency Plan' ? 'var(--ml-accent)' : 'var(--risk-low)';
               
               return (
                 <React.Fragment key={quadrant}>
@@ -401,10 +393,10 @@ export function SupplierRisk() {
               aspectRatio={4 / 3}
               content={(props) => {
                 const { x, y, width, height, name, resilience_score } = props;
-                let fill = '#464c89';
-                if (resilience_score < 0.25) fill = '#dd4d88';
-                else if (resilience_score <= 0.40) fill = '#ff6b59';
-                else if (resilience_score <= 0.55) fill = '#ffa600';
+                let fill = 'var(--risk-low)';
+                if (resilience_score < 0.25) fill = 'var(--risk-critical)';
+                else if (resilience_score <= 0.40) fill = 'var(--risk-high)';
+                else if (resilience_score <= 0.55) fill = 'var(--risk-medium)';
                 
                 const gap = 2;
                 const innerWidth = Math.max(0, width - gap * 2);
@@ -431,17 +423,17 @@ export function SupplierRisk() {
                   if (active && payload && payload.length) {
                     const data = payload[0].payload;
                     return (
-                      <div style={{ 
-                        background: 'rgba(26, 42, 74, 0.7)', 
+                      <div style={{
+                        background: 'rgba(10, 10, 10, 0.8)',
                         backdropFilter: 'blur(12px)',
                         WebkitBackdropFilter: 'blur(12px)',
-                        border: '1px solid rgba(255,255,255,0.15)', 
-                        padding: '12px 16px', 
+                        border: '1px solid rgba(255,255,255,0.15)',
+                        padding: '12px 16px',
                         borderRadius: 12,
                         boxShadow: '0 8px 32px rgba(0,0,0,0.4)'
                       }}>
                         <div style={{ fontWeight: 700, color: 'var(--text-inverse)', marginBottom: 6, fontSize: 14 }}>{data.name}</div>
-                        <div style={{ fontSize: 13, color: '#ff6b59', marginBottom: 2, fontWeight: 600 }}>Exposure: {fmt(data.actualValue)}</div>
+                        <div style={{ fontSize: 13, color: 'var(--risk-critical)', marginBottom: 2, fontWeight: 600 }}>Exposure: {fmt(data.actualValue)}</div>
                         <div style={{ fontSize: 12, color: 'var(--on-surface-variant)', marginBottom: 2 }}>Resilience: <span style={{color: 'var(--text-inverse)', fontWeight: 600}}>{data.resilience_score?.toFixed(3)}</span></div>
                         <div style={{ fontSize: 12, color: 'var(--on-surface-variant)' }}>Risk Band: <span style={{color: 'var(--text-inverse)', fontWeight: 600}}>{data.risk_band}</span></div>
                       </div>
@@ -458,9 +450,9 @@ export function SupplierRisk() {
       {activeView === 'Triage' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           {[
-            { label: 'Requires Intervention', quadrantGroups: ['Critical Priority', 'Monitor Closely'], color: '#dd4d88' },
-            { label: 'Watchlist', quadrantGroups: ['Contingency Plan'], color: '#ff6b59' },
-            { label: 'Stable', quadrantGroups: ['Routine Review'], color: '#38A169' }
+            { label: 'Requires Intervention', quadrantGroups: ['Critical Priority', 'Monitor Closely'], color: 'var(--risk-critical)' },
+            { label: 'Watchlist', quadrantGroups: ['Contingency Plan'], color: 'var(--risk-high)' },
+            { label: 'Stable', quadrantGroups: ['Routine Review'], color: 'var(--risk-low)' }
           ].map(swimlane => {
             const laneSuppliers = filtered.filter(s => swimlane.quadrantGroups.includes(s.priority_quadrant));
             return (
@@ -501,22 +493,29 @@ export function SupplierRisk() {
 
 
       {/* Mini Charts */}
-      {(chartCountryFilter || chartTierFilter || chartBandFilter) && (
+      {(chartCountryFilter || chartTierFilter) && (
         <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: -16, position: 'relative', zIndex: 10 }}>
-          <button onClick={() => { setChartCountryFilter(''); setChartTierFilter(''); setChartBandFilter(''); }} style={{ background: '#dd4d88', color: 'white', border: 'none', padding: '6px 12px', borderRadius: 4, cursor: 'pointer', fontSize: 12, fontWeight: 700 }}>
+          <button onClick={() => { setChartCountryFilter(''); setChartTierFilter(''); }} style={{ background: 'var(--accent)', color: '#ffffff', border: 'none', padding: '6px 12px', borderRadius: 4, cursor: 'pointer', fontSize: 12, fontWeight: 700 }}>
             Clear Filters ×
           </button>
         </div>
       )}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginTop: 24, padding: 16, background: 'var(--surface-container)', borderRadius: 8 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 16, marginTop: 24, padding: 16, background: 'var(--surface-container)', borderRadius: 8 }}>
         
         <div style={{ height: 180 }}>
           <h5 style={{ margin: '0 0 8px 0', fontSize: 12, color: 'var(--on-surface-variant)', textAlign: 'center' }}>Top 8 Countries</h5>
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={countryChartData} layout="vertical" margin={{ top: 0, right: 10, left: 10, bottom: 0 }}>
+            <BarChart data={countryChartData} layout="vertical" margin={{ top: 0, right: 28, left: 10, bottom: 0 }}>
               <XAxis type="number" hide />
               <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: 'var(--on-surface-variant)' }} width={70} />
+              <Tooltip
+                cursor={{ fill: 'var(--surface-container-high)' }}
+                contentStyle={{ background: 'var(--tooltip-bg)', backdropFilter: 'blur(8px)', border: '1px solid var(--outline-variant)', borderRadius: 8, fontSize: 11 }}
+                itemStyle={{ color: 'var(--text-inverse)' }}
+                formatter={(value) => [`${value} supplier${value === 1 ? '' : 's'}`, 'Count']}
+              />
               <Bar dataKey="value" onClick={(d) => setChartCountryFilter(chartCountryFilter === d.name ? '' : d.name)} cursor="pointer" radius={[0, 4, 4, 0]}>
+                <LabelList dataKey="value" position="right" fill="var(--on-surface-variant)" fontSize={10} />
                 {countryChartData.map((e, i) => (
                   <Cell key={`cell-${i}`} fill="var(--primary)" opacity={chartCountryFilter && chartCountryFilter !== e.name ? 0.3 : 1} />
                 ))}
@@ -527,32 +526,35 @@ export function SupplierRisk() {
 
         <div style={{ height: 180 }}>
           <h5 style={{ margin: '0 0 8px 0', fontSize: 12, color: 'var(--on-surface-variant)', textAlign: 'center' }}>Suppliers by Tier</h5>
-          <ResponsiveContainer width="100%" height="100%">
-            <PieChart>
-              <Pie data={tierChartData} dataKey="value" innerRadius={45} outerRadius={65} paddingAngle={3} stroke="var(--surface-container)" strokeWidth={2} onClick={(d) => setChartTierFilter(chartTierFilter === d.name ? '' : d.name)} cursor="pointer">
-                {tierChartData.map((e, i) => (
-                  <Cell key={`cell-${i}`} fill={tierColors[i % tierColors.length]} opacity={chartTierFilter && chartTierFilter !== e.name ? 0.3 : 1} />
-                ))}
-              </Pie>
-              <Tooltip contentStyle={{ background: 'var(--tooltip-bg)', backdropFilter: 'blur(8px)', border: '1px solid var(--outline-variant)', borderRadius: 8, fontSize: 11 }} itemStyle={{ color: 'var(--text-inverse)' }} />
-            </PieChart>
-          </ResponsiveContainer>
-        </div>
-
-        <div style={{ height: 180 }}>
-          <h5 style={{ margin: '0 0 8px 0', fontSize: 12, color: 'var(--on-surface-variant)', textAlign: 'center' }}>Suppliers by Risk Band</h5>
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={bandChartData} margin={{ top: 20, right: 10, left: -20, bottom: 0 }}>
-              <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: 'var(--on-surface-variant)' }} />
-              <YAxis hide />
-              <Bar dataKey="value" onClick={(d) => setChartBandFilter(chartBandFilter === d.name ? '' : d.name)} cursor="pointer" radius={[4, 4, 0, 0]} barSize={48}>
-                <LabelList dataKey="value" position="top" fill="rgba(255,255,255,0.8)" fontSize={11} fontWeight={700} />
-                {bandChartData.map((e, i) => (
-                  <Cell key={`cell-${i}`} fill={riskBandColors[e.name] || 'var(--primary)'} opacity={chartBandFilter && chartBandFilter !== e.name ? 0.3 : 1} />
-                ))}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
+          <div style={{ display: 'flex', alignItems: 'center', height: 'calc(100% - 20px)' }}>
+            <ResponsiveContainer width="60%" height="100%">
+              <PieChart>
+                <Pie data={tierChartData} dataKey="value" innerRadius={40} outerRadius={62} paddingAngle={3} stroke="var(--surface-container)" strokeWidth={2} onClick={(d) => setChartTierFilter(chartTierFilter === d.name ? '' : d.name)} cursor="pointer">
+                  {tierChartData.map((e, i) => (
+                    <Cell key={`cell-${i}`} fill={tierColors[i % tierColors.length]} opacity={chartTierFilter && chartTierFilter !== e.name ? 0.3 : 1} />
+                  ))}
+                </Pie>
+                <Tooltip
+                  contentStyle={{ background: 'var(--tooltip-bg)', backdropFilter: 'blur(8px)', border: '1px solid var(--outline-variant)', borderRadius: 8, fontSize: 11 }}
+                  itemStyle={{ color: 'var(--text-inverse)' }}
+                  formatter={(value) => [`${value} supplier${value === 1 ? '' : 's'}`, 'Count']}
+                />
+              </PieChart>
+            </ResponsiveContainer>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flex: 1, paddingLeft: 4 }}>
+              {tierChartData.map((e, i) => (
+                <div
+                  key={e.name}
+                  onClick={() => setChartTierFilter(chartTierFilter === e.name ? '' : e.name)}
+                  style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', opacity: chartTierFilter && chartTierFilter !== e.name ? 0.4 : 1 }}
+                >
+                  <span style={{ width: 9, height: 9, borderRadius: 2, background: tierColors[i % tierColors.length], flexShrink: 0 }} />
+                  <span style={{ fontSize: 11, color: 'var(--on-surface-variant)' }}>Tier {e.name}</span>
+                  <span className="data-mono" style={{ fontSize: 11, color: 'var(--on-surface)', marginLeft: 'auto' }}>{e.value}</span>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
 
       </div>

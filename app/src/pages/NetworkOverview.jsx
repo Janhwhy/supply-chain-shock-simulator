@@ -51,12 +51,12 @@ export function NetworkOverview() {
   const criticalIds = new Set(topSuppliers.slice(0, 2).map(n => n.node_id));
 
   // Simple force-layout simulation (manual canvas draw)
-  const geoColors = ['#464c89', '#003d5c', '#ffa600', '#ff6b59', '#954e9b', '#4299e1'];
+  const geoColors = ['var(--accent)', 'var(--accent-strong)', 'var(--risk-high)', 'var(--risk-critical)', 'var(--ml-accent)', 'var(--risk-medium)'];
 
   function critBand(score) {
-    if (score > 0.8) return { label: 'Critical', color: '#ff6b59', text: 'white' };
-    if (score > 0.5) return { label: 'High', color: '#ffa600', text: 'black' };
-    return { label: 'Standard', color: '#464c89', text: 'white' };
+    if (score > 0.8) return { label: 'Critical', color: 'var(--risk-critical)', text: 'white' };
+    if (score > 0.5) return { label: 'High', color: 'var(--risk-high)', text: 'black' };
+    return { label: 'Standard', color: 'var(--ml-accent)', text: 'white' };
   }
 
   return (
@@ -90,12 +90,7 @@ export function NetworkOverview() {
           <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--outline-variant)', background: 'var(--surface-container-low)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <h2 className="title-md">Topology Visualization</h2>
             <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-              {[['#ff6b59','Critical'],['#464c89','Standard'],['#003d5c','Product']].map(([color, label]) => (
-                <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <div style={{ width: 8, height: 8, borderRadius: '50%', background: color }} />
-                  <span className="label-caps" style={{ color: 'var(--on-surface-variant)' }}>{label}</span>
-                </div>
-              ))}
+              <span className="body-xs">Legend + color-by in the top-right corner of the graph →</span>
             </div>
           </div>
           {/* Interactive SVG graph (simplified force layout) */}
@@ -206,7 +201,7 @@ export function NetworkOverview() {
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'flex-end' }}>
                         <span className="data-mono">{(c.betweenness_centrality || 0).toFixed(4)}</span>
                         <div style={{ width: 60, background: 'var(--surface-container-high)', height: 6, borderRadius: 3, overflow: 'hidden' }}>
-                          <div style={{ width: `${betPct}%`, background: '#ff6b59', height: '100%' }} />
+                          <div style={{ width: `${betPct}%`, background: 'var(--risk-critical)', height: '100%' }} />
                         </div>
                       </div>
                     </td>
@@ -214,7 +209,7 @@ export function NetworkOverview() {
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'flex-end' }}>
                         <span className="data-mono">{(c.closeness_centrality || 0).toFixed(4)}</span>
                         <div style={{ width: 60, background: 'var(--surface-container-high)', height: 6, borderRadius: 3, overflow: 'hidden' }}>
-                          <div style={{ width: `${cloPct}%`, background: '#ffa600', height: '100%' }} />
+                          <div style={{ width: `${cloPct}%`, background: 'var(--risk-high)', height: '100%' }} />
                         </div>
                       </div>
                     </td>
@@ -229,12 +224,32 @@ export function NetworkOverview() {
   );
 }
 
+function LegendRow({ color, label, swatchStyle }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+      <span style={{ width: 9, height: 9, borderRadius: '50%', background: color, flexShrink: 0, ...swatchStyle }} />
+      <span style={{ color: 'var(--on-surface-variant)' }}>{label}</span>
+    </div>
+  );
+}
+
+// Interpolates from calm blue (--risk-medium, low risk) to alarm red (--risk-critical,
+// high risk). Canvas fillStyle can't resolve CSS custom properties, so these are the
+// literal RGB equivalents of --risk-medium / --risk-critical.
+function propagationColor(t) {
+  const lo = [79, 141, 255];
+  const hi = [255, 45, 77];
+  const c = lo.map((v, i) => Math.round(v + (hi[i] - v) * Math.min(1, Math.max(0, t))));
+  return `rgb(${c[0]}, ${c[1]}, ${c[2]})`;
+}
+
 /** Force-directed graph using react-force-graph-2d */
 function NetworkGraph({ nodes, edges, criticalIds }) {
   const fgRef = useRef();
   const containerRef = useRef();
   const [dims, setDims] = useState({ w: 600, h: 480 });
   const [tooltip, setTooltip] = useState(null); // { node, x, y }
+  const [colorMode, setColorMode] = useState('pagerank'); // 'pagerank' | 'propagation'
 
   // Track container size
   useEffect(() => {
@@ -280,11 +295,15 @@ function NetworkGraph({ nodes, edges, criticalIds }) {
     const isCritical = node.isCritical;
     const isProduct = node.type === 'product';
     const r = isProduct ? 4 : Math.max(4, 4 + node.pagerank * 160);
-    const color = isProduct ? '#003d5c' : isCritical ? '#ff6b59' : '#464c89';
+    const color = isProduct
+      ? '#4a4a4a'
+      : colorMode === 'propagation'
+        ? propagationColor(node.propagatedRisk)
+        : (isCritical ? '#ff2d4d' : '#ff5a29');
 
-    // Glow for critical nodes
+    // Glow for structurally critical nodes (top-2 by PageRank), in either color mode
     if (isCritical) {
-      ctx.shadowColor = '#ff6b59';
+      ctx.shadowColor = '#ff2d4d';
       ctx.shadowBlur = 12;
     }
 
@@ -299,12 +318,12 @@ function NetworkGraph({ nodes, edges, criticalIds }) {
     // Label for critical nodes or when zoomed in enough
     if (isCritical || globalScale > 2.5) {
       ctx.font = `${Math.max(4, 10 / globalScale)}px Inter, sans-serif`;
-      ctx.fillStyle = '#e2e8f0';
+      ctx.fillStyle = '#f6f5f2';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.fillText(node.name?.split(' ')[0] || '', node.x, node.y + r + 6 / globalScale);
     }
-  }, []);
+  }, [colorMode]);
 
   const nodeRelSize = 1;
 
@@ -369,7 +388,7 @@ function NetworkGraph({ nodes, edges, criticalIds }) {
           zIndex: 10,
           minWidth: 180,
         }}>
-          <div style={{ fontWeight: 700, fontSize: 13, color: tooltip.node.isCritical ? '#ff6b59' : 'var(--on-surface)', marginBottom: 6 }}>
+          <div style={{ fontWeight: 700, fontSize: 13, color: tooltip.node.isCritical ? '#ff2d4d' : 'var(--on-surface)', marginBottom: 6 }}>
             {tooltip.node.name}
           </div>
           {[
@@ -388,6 +407,52 @@ function NetworkGraph({ nodes, edges, criticalIds }) {
           ))}
         </div>
       )}
+
+      {/* Legend + color-by toggle */}
+      <div style={{
+        position: 'absolute', top: 16, right: 16,
+        background: 'rgba(16,20,24,0.85)',
+        backdropFilter: 'blur(12px)',
+        border: '1px solid var(--outline-variant)',
+        borderRadius: 8,
+        padding: '10px 12px',
+        fontSize: 11,
+        minWidth: 168,
+      }}>
+        <div style={{ display: 'flex', gap: 2, marginBottom: 8, background: 'rgba(255,255,255,0.06)', borderRadius: 6, padding: 2 }}>
+          {[['pagerank', 'PageRank'], ['propagation', 'Propagated Risk']].map(([mode, label]) => (
+            <button
+              key={mode}
+              onClick={() => setColorMode(mode)}
+              style={{
+                flex: 1, padding: '4px 6px', borderRadius: 4, fontSize: 10, fontWeight: 700,
+                color: colorMode === mode ? 'var(--text-inverse)' : 'var(--on-surface-variant)',
+                background: colorMode === mode ? 'var(--ml-accent)' : 'transparent',
+              }}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+          {colorMode === 'pagerank' ? (
+            <>
+              <LegendRow color="#ff5a29" label="Supplier" />
+              <LegendRow color="#ff2d4d" label="Critical (top-2 PageRank)" />
+              <LegendRow color="#4a4a4a" label="Product" swatchStyle={{ width: 7, height: 7 }} />
+            </>
+          ) : (
+            <>
+              <LegendRow color="rgb(79,141,255)" label="Low propagated risk" />
+              <LegendRow color="rgb(255,45,77)" label="High propagated risk" />
+              <LegendRow color="#4a4a4a" label="Product" swatchStyle={{ width: 7, height: 7 }} />
+            </>
+          )}
+          <div style={{ color: 'var(--on-surface-variant)', fontSize: 10, marginTop: 2, lineHeight: 1.4 }}>
+            Node size = PageRank. Red glow = structurally critical, either mode.
+          </div>
+        </div>
+      </div>
 
       {/* Controls */}
       <div style={{

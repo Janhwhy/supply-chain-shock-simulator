@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { BarChart, Bar, XAxis, YAxis, Cell, ResponsiveContainer, Tooltip } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, Cell, ResponsiveContainer, Tooltip, LabelList } from 'recharts';
 import { api } from '../api/client';
 import { ResilienceGauge } from '../components/ResilienceGauge';
 import { RiskBadge } from '../components/RiskBadge';
@@ -30,12 +30,11 @@ const SCENARIO_NAMES = {
   quality_failure: 'Quality Failure',
 };
 
-const GAUGE_DEFS = [
-  { key: 'dependency_risk',      label: 'Dependency Risk',      color: '#ff6b59' },
-  { key: 'geo_risk',             label: 'Geographic Risk',      color: '#ffa600' },
-  { key: 'reliability_risk',     label: 'Reliability Risk',     color: '#954e9b' },
-  { key: 'substitutability_risk',label: 'Substitutability Risk',color: '#ff6b59' },
-  { key: 'ml_risk_score',        label: 'ML Risk Score',        color: '#6366f1' },
+const FACTOR_BARS = [
+  { key: 'dependency_risk',       label: 'Dependency',       color: 'var(--risk-critical)' },
+  { key: 'geo_risk',              label: 'Geographic',       color: 'var(--accent)' },
+  { key: 'reliability_risk',      label: 'Reliability',      color: 'var(--ml-accent)' },
+  { key: 'substitutability_risk', label: 'Substitutability', color: 'var(--risk-medium)' },
 ];
 
 export function SupplierDetail() {
@@ -62,6 +61,10 @@ export function SupplierDetail() {
 
   // Max sim value for bar height scaling
   const maxSim = Math.max(...simResults.map(r => r.p95_impact || 0), 1);
+
+  const factorBarData = [...FACTOR_BARS]
+    .map(f => ({ ...f, value: scores[f.key] ?? 0 }))
+    .sort((a, b) => b.value - a.value);
 
   return (
     <>
@@ -99,23 +102,23 @@ export function SupplierDetail() {
               const csv = rows.map(r => r.join(',')).join('\n');
               const a = document.createElement('a'); a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv); a.download = `supplier_${id}.csv`; a.click();
             }}
-            style={{ padding: '8px 24px', borderRadius: 4, border: '1px solid #003d5c', color: '#003d5c', fontSize: 14, fontWeight: 600, transition: 'all 0.2s' }}
+            style={{ padding: '8px 24px', borderRadius: 4, border: '1px solid var(--accent-strong)', color: 'var(--accent-strong)', fontSize: 14, fontWeight: 600, transition: 'all 0.2s' }}
           >Export Report</button>
           <button
             onClick={() => window.open(`mailto:contact@${data.supplier_name?.toLowerCase().replace(/[^a-z0-9]/g, '')}.com?subject=Risk%20Mitigation%20Discussion`)}
-            style={{ padding: '8px 24px', borderRadius: 4, background: '#464c89', color: 'white', fontSize: 14, fontWeight: 600 }}
+            style={{ padding: '8px 24px', borderRadius: 4, background: 'var(--accent)', color: '#ffffff', fontSize: 14, fontWeight: 600 }}
           >Contact Lead</button>
         </div>
       </div>
 
       {/* Score Interpretation Card */}
       {scoreInterp.risk_band && (
-        <div className="card card--p" style={{ marginBottom: 24, borderLeft: `6px solid ${scoreInterp.urgency_level === 'Immediate' ? '#ff6b59' : '#ffa600'}`, background: 'var(--surface-container-high)' }}>
+        <div className="card card--p" style={{ marginBottom: 24, borderLeft: `6px solid ${scoreInterp.urgency_level === 'Immediate' ? 'var(--risk-critical)' : 'var(--risk-high)'}`, background: 'var(--surface-container-high)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
             <h3 className="title-md" style={{ color: 'var(--on-surface)' }}>Systemic Risk Interpretation</h3>
-            <span style={{ 
-              background: scoreInterp.urgency_level === 'Immediate' ? 'rgba(255, 107, 89, 0.15)' : 'rgba(255, 166, 0, 0.15)',
-              color: scoreInterp.urgency_level === 'Immediate' ? '#ff6b59' : '#ffa600',
+            <span style={{
+              background: scoreInterp.urgency_level === 'Immediate' ? 'color-mix(in srgb, var(--risk-critical) 15%, transparent)' : 'color-mix(in srgb, var(--risk-high) 15%, transparent)',
+              color: scoreInterp.urgency_level === 'Immediate' ? 'var(--risk-critical)' : 'var(--risk-high)',
               padding: '4px 12px',
               borderRadius: 100,
               fontSize: 12,
@@ -136,11 +139,33 @@ export function SupplierDetail() {
         </div>
       )}
 
-      {/* Risk Gauges */}
-      <div className="gauges-grid" style={{ marginBottom: 24 }}>
-        {GAUGE_DEFS.map(({ key, label, color }) => (
-          <ResilienceGauge key={key} label={label} value={scores[key]} color={color} />
-        ))}
+      {/* Headline ML score + risk factor breakdown, side by side */}
+      <div style={{ display: 'flex', gap: 24, marginBottom: 24, flexWrap: 'wrap' }}>
+        <div className="card card--p" style={{ flex: '0 0 220px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <ResilienceGauge label="ML Risk Score" value={scores.ml_risk_score} color="var(--ml-accent)" />
+        </div>
+        <div className="card card--p" style={{ flex: '1 1 360px' }}>
+          <h3 className="title-md" style={{ marginBottom: 4 }}>Risk Factor Breakdown</h3>
+          <p className="body-xs" style={{ marginBottom: 12 }}>
+            The four inputs behind this supplier's composite score, ranked by magnitude (0–1, higher = riskier).
+          </p>
+          <ResponsiveContainer width="100%" height={Math.max(140, factorBarData.length * 42)}>
+            <BarChart data={factorBarData} layout="vertical" margin={{ top: 4, right: 40, bottom: 4, left: 8 }}>
+              <XAxis type="number" domain={[0, 1]} hide />
+              <YAxis type="category" dataKey="label" width={110} tick={{ fill: 'var(--on-surface-variant)', fontSize: 12 }} axisLine={false} tickLine={false} />
+              <Tooltip
+                formatter={(value) => [value != null ? value.toFixed(3) : '—', 'Risk']}
+                contentStyle={{ background: 'var(--tooltip-bg)', border: '1px solid var(--outline-variant)', borderRadius: 8, color: 'var(--on-surface)' }}
+              />
+              <Bar dataKey="value" radius={4}>
+                <LabelList dataKey="value" position="right" formatter={(v) => v != null ? v.toFixed(2) : '—'} fill="var(--on-surface-variant)" fontSize={11} />
+                {factorBarData.map((f, i) => (
+                  <Cell key={i} fill={f.color} />
+                ))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
       </div>
 
       {/* Why is this supplier risky? — SHAP feature attribution */}
@@ -165,7 +190,7 @@ export function SupplierDetail() {
               />
               <Bar dataKey="contribution" radius={4}>
                 {scores.top_risk_factors.map((f, i) => (
-                  <Cell key={i} fill={f.contribution >= 0 ? '#ff6b59' : '#38A169'} />
+                  <Cell key={i} fill={f.contribution >= 0 ? 'var(--risk-critical)' : 'var(--risk-low)'} />
                 ))}
               </Bar>
             </BarChart>
@@ -186,8 +211,8 @@ export function SupplierDetail() {
               return (
                 <div key={i} className="sim-bar-group">
                   <div className="sim-bar-pair">
-                    <div className="sim-bar" style={{ height: `${p50h}%`, background: '#464c89', opacity: 0.85 }} title={`Median Loss: ${fmt(r.p50_impact)}`} />
-                    <div className="sim-bar" style={{ height: `${p95h}%`, background: '#ff6b59' }} title={`Worst-Case Loss: ${fmt(r.p95_impact)}`} />
+                    <div className="sim-bar" style={{ height: `${p50h}%`, background: 'var(--ml-accent)', opacity: 0.85 }} title={`Median Loss: ${fmt(r.p50_impact)}`} />
+                    <div className="sim-bar" style={{ height: `${p95h}%`, background: 'var(--risk-critical)' }} title={`Worst-Case Loss: ${fmt(r.p95_impact)}`} />
                   </div>
                   <span className="sim-label">{r.scenario_name?.split(' ').slice(0, 2).join(' ') || `S${i+1}`}</span>
                 </div>
@@ -195,9 +220,9 @@ export function SupplierDetail() {
             })}
           </div>
           <div style={{ display: 'flex', justifyContent: 'center', gap: 24, marginTop: 8 }}>
-            {[['#464c89','Median Loss'],['#ff6b59','Worst-Case Loss']].map(([color, label]) => (
+            {[['var(--ml-accent)','Median Loss'],['var(--risk-critical)','Worst-Case Loss']].map(([color, label]) => (
               <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <div style={{ width: 12, height: 12, background: color, borderRadius: 2, opacity: color === '#464c89' ? 0.85 : 1 }} />
+                <div style={{ width: 12, height: 12, background: color, borderRadius: 2, opacity: color === 'var(--ml-accent)' ? 0.85 : 1 }} />
                 <span className="data-mono" style={{ color: 'var(--on-surface-variant)' }}>{label}</span>
               </div>
             ))}
@@ -223,7 +248,7 @@ export function SupplierDetail() {
                       <td><strong>{SCENARIO_NAMES[r.scenario_name] || r.scenario_name}</strong></td>
                       <td className="data-mono" style={{ textAlign: 'right', color: 'var(--on-surface)' }}>{fmt(r.mean_impact)}</td>
                       <td className="data-mono" style={{ textAlign: 'right', color: 'var(--on-surface-variant)' }}>{fmt(r.std_impact)}</td>
-                      <td className="data-mono" style={{ textAlign: 'right', color: r.skewness > 1.5 ? '#ff6b59' : 'var(--on-surface)' }}>{r.skewness != null ? r.skewness.toFixed(2) : '—'}</td>
+                      <td className="data-mono" style={{ textAlign: 'right', color: r.skewness > 1.5 ? 'var(--risk-critical)' : 'var(--on-surface)' }}>{r.skewness != null ? r.skewness.toFixed(2) : '—'}</td>
                       <td className="data-mono" style={{ textAlign: 'right' }}>{r.var_ratio != null ? `${r.var_ratio.toFixed(2)}x` : '—'}</td>
                     </tr>
                   ))}
@@ -235,12 +260,12 @@ export function SupplierDetail() {
 
         {/* Recommended Action Card */}
         <div className="card card--p" style={{ position: 'relative', overflow: 'hidden' }}>
-          <div style={{ position: 'absolute', top: 0, right: 0, width: 128, height: 128, background: 'rgba(149,78,155,0.08)', borderRadius: '50%', filter: 'blur(32px)', transform: 'translate(50%, -50%)', pointerEvents: 'none' }} />
+          <div style={{ position: 'absolute', top: 0, right: 0, width: 128, height: 128, background: 'color-mix(in srgb, var(--ml-accent) 10%, transparent)', borderRadius: '50%', filter: 'blur(32px)', transform: 'translate(50%, -50%)', pointerEvents: 'none' }} />
           {playbook ? (
             <div className="action-card">
               <div>
                 <h3 className="title-md" style={{ marginBottom: 4 }}>Recommended Action</h3>
-                <p className="headline-lg-mobile" style={{ color: '#954e9b', marginBottom: 16 }}>{playbook.recommended_action}</p>
+                <p className="headline-lg-mobile" style={{ color: 'var(--ml-accent)', marginBottom: 16 }}>{playbook.recommended_action}</p>
                 <div>
                   {[
                     ['Scenario', playbook.scenario],
@@ -257,7 +282,7 @@ export function SupplierDetail() {
               </div>
               <button
                 onClick={() => navigate('/playbook')}
-                style={{ width: '100%', padding: '8px 0', borderRadius: 4, border: '1px solid #003d5c', color: '#003d5c', fontSize: 14, fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 16, transition: 'all 0.2s' }}
+                style={{ width: '100%', padding: '8px 0', borderRadius: 4, border: '1px solid var(--accent-strong)', color: 'var(--accent-strong)', fontSize: 14, fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 16, transition: 'all 0.2s' }}
               >
                 View Full Playbook
                 <span className="material-symbols-outlined" style={{ fontSize: 20 }}>arrow_forward</span>

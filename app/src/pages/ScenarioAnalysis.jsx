@@ -144,7 +144,7 @@ export function ScenarioAnalysis() {
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 24 }}>
         <h2 className="headline-lg">Monte Carlo Disruption Simulator</h2>
         <p className="body-sm" style={{ color: 'var(--on-surface-variant)' }}>
-          Configure a disruption vector and run 10,000 physical simulation trials per supplier.
+          Select a disruption scenario and run 10,000 Monte Carlo trials per supplier.
         </p>
       </div>
 
@@ -262,21 +262,21 @@ export function ScenarioAnalysis() {
               </div>
               <div className="body-xs" style={{ color: 'var(--on-surface-variant)' }}>10,000 trials completed</div>
             </div>
-            <div className="card card--p" style={{ borderLeft: '4px solid #ff6b59' }}>
+            <div className="card card--p" style={{ borderLeft: '4px solid var(--risk-critical)' }}>
               <div className="label-caps" style={{ color: 'var(--on-surface-variant)' }}>Max Simulated Loss</div>
-              <div className="display-sm" style={{ margin: '8px 0', fontWeight: 700, color: '#ff6b59' }}>
+              <div className="display-sm" style={{ margin: '8px 0', fontWeight: 700, color: 'var(--risk-critical)' }}>
                 {fmt(maxP95All)}
               </div>
               <div className="body-xs" style={{ color: 'var(--on-surface-variant)' }}>Peak value-at-risk exposure</div>
             </div>
-            <div className="card card--p" style={{ borderLeft: '4px solid #ffa600' }}>
+            <div className="card card--p" style={{ borderLeft: '4px solid var(--risk-high)' }}>
               <div className="label-caps" style={{ color: 'var(--on-surface-variant)' }}>Average Scenario Risk</div>
               <div className="display-sm" style={{ margin: '8px 0', fontWeight: 700 }}>
                 {fmt(avgP95)}
               </div>
               <div className="body-xs" style={{ color: 'var(--on-surface-variant)' }}>Mean supplier exposure</div>
             </div>
-            <div className="card card--p" style={{ borderLeft: '4px solid #8b91c7' }}>
+            <div className="card card--p" style={{ borderLeft: '4px solid var(--ml-accent)' }}>
               <div className="label-caps" style={{ color: 'var(--on-surface-variant)' }}>Zero-Impact Probability</div>
               <div className="display-sm" style={{ margin: '8px 0', fontWeight: 700 }}>
                 {avgZeroImpact.toFixed(1)}%
@@ -302,7 +302,7 @@ export function ScenarioAnalysis() {
                       title={r.supplier_name}>{r.supplier_name}</div>
                     <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 12 }}>
                       <div style={{ flex: 1 }}>
-                        <div style={{ height: 20, background: '#464c89', borderRadius: '0 4px 4px 0', width: `${pct}%`, opacity: 0.85 + 0.15 * (1 - i / top15.length) }} />
+                        <div style={{ height: 20, background: 'var(--accent)', borderRadius: '0 4px 4px 0', width: `${pct}%`, opacity: 0.85 + 0.15 * (1 - i / top15.length) }} />
                       </div>
                       <span className="data-mono" style={{ color: 'var(--on-surface)', whiteSpace: 'nowrap', minWidth: 80, textAlign: 'right' }}>{fmt(r.p95_impact)}</span>
                     </div>
@@ -324,21 +324,22 @@ export function ScenarioAnalysis() {
             
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               {[
-                { key: 'severe', label: '🔴 Severe Impact', count: sortedRows.filter(r => (r.p95_impact || 0) > 1000000).length, data: sortedRows.filter(r => (r.p95_impact || 0) > 1000000), color: '#ff6b59' },
-                { key: 'moderate', label: '🟡 Moderate Impact', count: sortedRows.filter(r => (r.p95_impact || 0) > 100000 && (r.p95_impact || 0) <= 1000000).length, data: sortedRows.filter(r => (r.p95_impact || 0) > 100000 && (r.p95_impact || 0) <= 1000000), color: '#ffa600' },
-                { key: 'minimal', label: '⚪ Minimal Impact', count: sortedRows.filter(r => (r.p95_impact || 0) <= 100000).length, data: sortedRows.filter(r => (r.p95_impact || 0) <= 100000), color: 'var(--on-surface-variant)' }
+                { key: 'severe', label: 'Severe Impact', count: sortedRows.filter(r => (r.p95_impact || 0) > 1000000).length, data: sortedRows.filter(r => (r.p95_impact || 0) > 1000000), color: 'var(--risk-critical)' },
+                { key: 'moderate', label: 'Moderate Impact', count: sortedRows.filter(r => (r.p95_impact || 0) > 100000 && (r.p95_impact || 0) <= 1000000).length, data: sortedRows.filter(r => (r.p95_impact || 0) > 100000 && (r.p95_impact || 0) <= 1000000), color: 'var(--risk-high)' },
+                { key: 'minimal', label: 'Minimal Impact', count: sortedRows.filter(r => (r.p95_impact || 0) <= 100000).length, data: sortedRows.filter(r => (r.p95_impact || 0) <= 100000), color: 'var(--on-surface-variant)' }
               ].map(group => (
                 <div key={group.key} style={{ border: '1px solid var(--outline-variant)', borderRadius: 8, overflow: 'hidden' }}>
-                  <div 
+                  <div
                     onClick={() => toggleSeverity(group.key)}
-                    style={{ 
-                      display: 'flex', alignItems: 'center', justifyContent: 'space-between', 
+                    style={{
+                      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                       padding: '12px 16px', background: 'var(--surface-container-high)', cursor: 'pointer',
                       borderBottom: expandedSeverity[group.key] ? '1px solid var(--outline-variant)' : 'none'
                     }}
                   >
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                       <span className="material-symbols-outlined" style={{ fontSize: 18, color: 'var(--on-surface-variant)', transition: 'transform 0.2s', transform: expandedSeverity[group.key] ? 'rotate(90deg)' : 'rotate(0deg)' }}>chevron_right</span>
+                      <span style={{ width: 8, height: 8, borderRadius: '50%', background: group.color, display: 'inline-block' }} />
                       <strong style={{ fontSize: 14, color: 'var(--on-surface)' }}>{group.label} ({group.count} suppliers)</strong>
                     </div>
                   </div>
@@ -452,7 +453,7 @@ function MonteCarloHistogram({ data, scenarioLabel, fmt }) {
           </p>
         </div>
         <div style={{ display: 'flex', gap: 16, alignItems: 'center', flexShrink: 0 }}>
-          {[['P50 Median', '#4299e1', p50], ['P95 Tail Risk', '#ff6b59', p95]].map(([label, color, val]) => (
+          {[['P50 Median', 'var(--risk-medium)', p50], ['P95 Tail Risk', 'var(--risk-critical)', p95]].map(([label, color, val]) => (
             <div key={label} style={{ textAlign: 'right' }}>
               <div style={{ fontSize: 10, color: 'var(--on-surface-variant)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{label}</div>
               <div style={{ fontWeight: 700, color, fontSize: 15 }}>{fmt(val)}</div>
@@ -478,7 +479,7 @@ function MonteCarloHistogram({ data, scenarioLabel, fmt }) {
             const bw = (innerW / BINS) - 1;
             const bh = (c / maxCount) * innerH;
             const by = PAD.top + innerH - bh;
-            const barColor = (minV + (i + 0.5) * binWidth) >= p95 ? 'rgba(255,107,89,0.65)' : 'rgba(70,76,137,0.6)';
+            const barColor = (minV + (i + 0.5) * binWidth) >= p95 ? 'color-mix(in srgb, var(--risk-critical) 65%, transparent)' : 'color-mix(in srgb, var(--accent) 55%, transparent)';
             return (
               <rect key={i} x={bx} y={by} width={bw} height={bh}
                 fill={barColor} rx={2} />
@@ -487,17 +488,17 @@ function MonteCarloHistogram({ data, scenarioLabel, fmt }) {
 
           {/* Smooth curve overlay */}
           <polyline points={curvePoints.join(' ')} fill="none"
-            stroke="rgba(153,203,255,0.7)" strokeWidth={2} strokeLinejoin="round" />
+            stroke="color-mix(in srgb, var(--primary) 70%, transparent)" strokeWidth={2} strokeLinejoin="round" />
 
           {/* P50 marker */}
           <line x1={xScale(p50)} y1={PAD.top} x2={xScale(p50)} y2={PAD.top + innerH}
-            stroke="#4299e1" strokeWidth={1.5} strokeDasharray="4 3" />
-          <text x={xScale(p50) + 4} y={PAD.top + 12} fill="#4299e1" fontSize={9} fontWeight={700}>P50</text>
+            stroke="var(--risk-medium)" strokeWidth={1.5} strokeDasharray="4 3" />
+          <text x={xScale(p50) + 4} y={PAD.top + 12} fill="var(--risk-medium)" fontSize={9} fontWeight={700}>P50</text>
 
           {/* P95 marker */}
           <line x1={xScale(p95)} y1={PAD.top} x2={xScale(p95)} y2={PAD.top + innerH}
-            stroke="#ff6b59" strokeWidth={1.5} strokeDasharray="4 3" />
-          <text x={xScale(p95) + 4} y={PAD.top + 12} fill="#ff6b59" fontSize={9} fontWeight={700}>P95</text>
+            stroke="var(--risk-critical)" strokeWidth={1.5} strokeDasharray="4 3" />
+          <text x={xScale(p95) + 4} y={PAD.top + 12} fill="var(--risk-critical)" fontSize={9} fontWeight={700}>P95</text>
 
           {/* Shaded P95 tail area */}
           {(() => {
@@ -505,7 +506,7 @@ function MonteCarloHistogram({ data, scenarioLabel, fmt }) {
             const x2 = W - PAD.right;
             return (
               <rect x={x1} y={PAD.top} width={Math.max(0, x2 - x1)} height={innerH}
-                fill="rgba(255,107,89,0.06)" />
+                fill="color-mix(in srgb, var(--risk-critical) 6%, transparent)" />
             );
           })()}
 

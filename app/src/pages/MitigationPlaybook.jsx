@@ -51,15 +51,17 @@ export function MitigationPlaybook() {
   const maxCost = Math.max(...top5.map(r => r.estimated_cost || 0), 1);
   const maxRed  = Math.max(...top5.map(r => r.p95_impact || 0), 1);
 
-  // Donut chart: action type distribution
+  // Donut chart: action type distribution (grouped by the full action name —
+  // truncating to the first word turned "Safety Stock Increase" into "Safety"
+  // and "Quarterly Monitoring" into "Quarterly")
   const actionGroups = {};
   playbook.forEach(r => {
-    const key = r.recommended_action?.split(' ')[0] || 'Other';
+    const key = r.recommended_action || 'Other';
     actionGroups[key] = (actionGroups[key] || 0) + 1;
   });
   const actionEntries = Object.entries(actionGroups).sort((a, b) => b[1] - a[1]).slice(0, 4);
   const totalActions = actionEntries.reduce((s, [, v]) => s + v, 0) || 1;
-  const donutColors = ['#003d5c', '#ffa600', '#ff6b59', '#dd4d88'];
+  const donutColors = ['var(--accent)', 'var(--ml-accent)', 'var(--risk-medium)', 'var(--risk-high)'];
 
   let cumPct = 0;
   const donutSegments = actionEntries.map(([label, count], i) => {
@@ -107,11 +109,11 @@ export function MitigationPlaybook() {
         </div>
         <div className="playbook-banner__item">
           <div className="playbook-banner__label">Total Risk Eliminated</div>
-          <div className="playbook-banner__value" style={{ color: '#003d5c' }}>{fmt(kpis?.total_risk_eliminated)}</div>
+          <div className="playbook-banner__value" style={{ color: 'var(--risk-low)' }}>{fmt(kpis?.total_risk_eliminated)}</div>
         </div>
         <div className="playbook-banner__item" style={{ borderRight: 'none' }}>
           <div className="playbook-banner__label">Portfolio ROI Matrix</div>
-          <div className="playbook-banner__value" style={{ color: '#ffa600' }}>
+          <div className="playbook-banner__value" style={{ color: 'var(--accent)' }}>
             {kpis?.portfolio_roi != null ? `${kpis.portfolio_roi.toFixed(2)}×` : '—'}
           </div>
         </div>
@@ -140,13 +142,13 @@ export function MitigationPlaybook() {
           const isExpanded = expandedIndex === i;
           const roi = r.roi || 0;
           
-          let roiColor = '#ff6b59'; // red
-          if (roi > 1) roiColor = '#38A169'; // green
-          else if (roi >= 0.5) roiColor = '#ffa600'; // orange
+          let roiColor = 'var(--risk-critical)';
+          if (roi > 1) roiColor = 'var(--risk-low)';
+          else if (roi >= 0.5) roiColor = 'var(--risk-high)';
 
           const isCrit = r.priority_quadrant?.toLowerCase().includes('critical');
           const isMonitor = r.priority_quadrant?.toLowerCase().includes('monitor');
-          const quadColor = isCrit ? '#dd4d88' : isMonitor ? '#ffa600' : '#4299e1';
+          const quadColor = isCrit ? 'var(--risk-critical)' : isMonitor ? 'var(--risk-high)' : 'var(--risk-low)';
 
           // Payback formatting
           let paybackStr = '—';
@@ -181,7 +183,7 @@ export function MitigationPlaybook() {
                   <span style={{ fontSize: '14px', fontWeight: 500, color: 'var(--on-surface-variant)' }}>{r.recommended_action}</span>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                  <div style={{ background: `${roiColor}15`, color: roiColor, border: `1px solid ${roiColor}40`, padding: '4px 12px', borderRadius: '12px', fontWeight: 700, fontSize: '13px' }}>
+                  <div style={{ background: `color-mix(in srgb, ${roiColor} 15%, transparent)`, color: roiColor, border: `1px solid color-mix(in srgb, ${roiColor} 40%, transparent)`, padding: '4px 12px', borderRadius: '12px', fontWeight: 700, fontSize: '13px' }}>
                     ROI: {r.roi != null ? `${r.roi.toFixed(1)}×` : '—'}
                   </div>
                   <span className="material-symbols-outlined" style={{ color: 'var(--on-surface-variant)', transform: isExpanded ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}>expand_more</span>
@@ -213,11 +215,11 @@ export function MitigationPlaybook() {
                       </div>
                       <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                         <span className="body-xs" style={{ color: 'var(--on-surface-variant)' }}>Worst-Case Loss</span>
-                        <strong className="data-mono" style={{ color: '#ff6b59' }}>{fmt(r.expected_annual_loss ?? r.p95_impact)}</strong>
+                        <strong className="data-mono" style={{ color: 'var(--risk-critical)' }}>{fmt(r.expected_annual_loss ?? r.p95_impact)}</strong>
                       </div>
                       <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                         <span className="body-xs" style={{ color: 'var(--on-surface-variant)' }}>Risk Reduction</span>
-                        <strong className="data-mono" style={{ color: '#38A169' }}>
+                        <strong className="data-mono" style={{ color: 'var(--risk-low)' }}>
                           {fmt(r.risk_reduction)}
                         </strong>
                       </div>
@@ -241,10 +243,10 @@ export function MitigationPlaybook() {
       <div style={{ display: 'grid', gridTemplateColumns: '8fr 4fr', gap: 24 }}>
         {/* Bar chart: Cost vs Risk Reduction */}
         <div className="card card--p">
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
             <h3 className="title-md">Action Cost vs Risk Exposure (Top 5 by ROI)</h3>
             <div style={{ display: 'flex', gap: 12 }}>
-              {[['var(--outline)','Cost'],['#003d5c','Worst-Case Loss']].map(([color, label]) => (
+              {[['var(--outline)','Cost'],['var(--risk-critical)','Worst-Case Loss']].map(([color, label]) => (
                 <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                   <div style={{ width: 12, height: 12, background: color, borderRadius: 2 }} />
                   <span className="label-caps" style={{ color: 'var(--on-surface-variant)' }}>{label}</span>
@@ -252,19 +254,26 @@ export function MitigationPlaybook() {
               ))}
             </div>
           </div>
-          <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-around', height: 200, paddingBottom: 32, borderBottom: '1px solid var(--outline-variant)', borderLeft: '1px solid var(--outline-variant)', paddingTop: 24, position: 'relative' }}>
-            {[0.25, 0.5, 0.75].map(pct => (
-              <div key={pct} style={{ position: 'absolute', left: 0, right: 0, bottom: `${pct * 100 + 32}%`, height: 1, background: 'rgba(64,71,81,0.3)', pointerEvents: 'none' }} />
-            ))}
+          <p className="body-xs" style={{ marginBottom: 12 }}>
+            Cost and Worst-Case Loss are on independent scales (each bar pair is normalized to its
+            own series max, since loss typically runs 10–30× larger than cost) — exact values labeled on every bar.
+          </p>
+          <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-around', height: 220, paddingBottom: 32, borderBottom: '1px solid var(--outline-variant)', borderLeft: '1px solid var(--outline-variant)', paddingTop: 24, position: 'relative' }}>
             {top5.map((r, i) => {
               const costH = (r.estimated_cost / maxCost) * 80;
               const redH  = (r.p95_impact / maxRed) * 80;
               const name  = (r.supplier_name || `SUP-${r.supplier_id}`).split(' ')[0];
               return (
-                <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, position: 'relative', zIndex: 1, width: 60 }}>
-                  <div style={{ display: 'flex', alignItems: 'flex-end', gap: 2, height: 160 }}>
-                    <div style={{ width: 14, background: 'var(--outline)', borderRadius: '4px 4px 0 0', height: `${costH}%` }} />
-                    <div style={{ width: 14, background: '#003d5c', borderRadius: '4px 4px 0 0', height: `${redH}%`, boxShadow: '0 0 10px rgba(0,61,92,0.2)' }} />
+                <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, position: 'relative', zIndex: 1, width: 68 }}>
+                  <div style={{ display: 'flex', alignItems: 'flex-end', gap: 3, height: 160 }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end', height: '100%' }}>
+                      <span className="data-mono" style={{ fontSize: 9, color: 'var(--on-surface-variant)', marginBottom: 3, whiteSpace: 'nowrap' }}>{fmt(r.estimated_cost)}</span>
+                      <div style={{ width: 14, background: 'var(--outline)', borderRadius: '4px 4px 0 0', height: `${costH}%` }} />
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end', height: '100%' }}>
+                      <span className="data-mono" style={{ fontSize: 9, color: 'var(--risk-critical)', marginBottom: 3, whiteSpace: 'nowrap' }}>{fmt(r.p95_impact)}</span>
+                      <div style={{ width: 14, background: 'var(--risk-critical)', borderRadius: '4px 4px 0 0', height: `${redH}%` }} />
+                    </div>
                   </div>
                   <span className="label-caps" style={{ color: 'var(--on-surface-variant)', fontSize: 10 }}>{name}</span>
                 </div>
@@ -317,10 +326,10 @@ function CampaignPlanner({ playbook, fmt }) {
 
   // Assign actions to quarters based on priority and ROI
   const QUARTERS = [
-    { label: 'Q1 · Jan–Mar', subtitle: 'Immediate action — highest risk', color: '#ff6b59', bg: 'rgba(255,107,89,0.06)', border: 'rgba(255,107,89,0.2)' },
-    { label: 'Q2 · Apr–Jun', subtitle: 'High priority — early mitigation', color: '#ffa600', bg: 'rgba(255,166,0,0.06)',  border: 'rgba(255,166,0,0.2)' },
-    { label: 'Q3 · Jul–Sep', subtitle: 'Monitor closely — structured response', color: '#8b91c7', bg: 'rgba(139,145,199,0.06)', border: 'rgba(139,145,199,0.2)' },
-    { label: 'Q4 · Oct–Dec', subtitle: 'Contingency & routine review', color: '#4299e1', bg: 'rgba(66,153,225,0.06)', border: 'rgba(66,153,225,0.2)' },
+    { label: 'Q1 · Jan–Mar', subtitle: 'Immediate action — highest risk', color: 'var(--risk-critical)', bg: 'color-mix(in srgb, var(--risk-critical) 6%, transparent)', border: 'color-mix(in srgb, var(--risk-critical) 20%, transparent)' },
+    { label: 'Q2 · Apr–Jun', subtitle: 'High priority — early mitigation', color: 'var(--risk-high)', bg: 'color-mix(in srgb, var(--risk-high) 6%, transparent)', border: 'color-mix(in srgb, var(--risk-high) 20%, transparent)' },
+    { label: 'Q3 · Jul–Sep', subtitle: 'Monitor closely — structured response', color: 'var(--ml-accent)', bg: 'color-mix(in srgb, var(--ml-accent) 6%, transparent)', border: 'color-mix(in srgb, var(--ml-accent) 20%, transparent)' },
+    { label: 'Q4 · Oct–Dec', subtitle: 'Contingency & routine review', color: 'var(--risk-low)', bg: 'color-mix(in srgb, var(--risk-low) 6%, transparent)', border: 'color-mix(in srgb, var(--risk-low) 20%, transparent)' },
   ];
 
   // Sort by priority then ROI
@@ -444,7 +453,7 @@ function CampaignPlanner({ playbook, fmt }) {
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 6, fontSize: 10 }}>
                       <span style={{ color: 'var(--on-surface-variant)' }}>{fmt(action.action_cost ?? action.estimated_cost)}</span>
-                      <span style={{ color: '#ffa600', fontWeight: 700 }}>
+                      <span style={{ color: 'var(--risk-high)', fontWeight: 700 }}>
                         ROI {action.roi != null ? action.roi.toFixed(1) + '×' : '—'}
                       </span>
                     </div>

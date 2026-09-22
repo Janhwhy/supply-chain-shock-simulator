@@ -93,17 +93,17 @@ export function Products() {
           <div className="display-sm" style={{ margin: '8px 0', fontWeight: 700 }}>{totalProducts}</div>
           <div className="body-xs" style={{ color: 'var(--on-surface-variant)' }}>Unique product definitions</div>
         </div>
-        <div className="card card--p" style={{ borderLeft: '4px solid #8b91c7' }}>
+        <div className="card card--p" style={{ borderLeft: '4px solid var(--ml-accent)' }}>
           <div className="label-caps" style={{ color: 'var(--on-surface-variant)' }}>Categories</div>
           <div className="display-sm" style={{ margin: '8px 0', fontWeight: 700 }}>{categories.length}</div>
           <div className="body-xs" style={{ color: 'var(--on-surface-variant)' }}>Sourcing categories</div>
         </div>
-        <div className="card card--p" style={{ borderLeft: '4px solid #ffa600' }}>
+        <div className="card card--p" style={{ borderLeft: '4px solid var(--risk-high)' }}>
           <div className="label-caps" style={{ color: 'var(--on-surface-variant)' }}>Avg Unit Cost</div>
           <div className="display-sm" style={{ margin: '8px 0', fontWeight: 700 }}>{fmtCost(avgCost)}</div>
           <div className="body-xs" style={{ color: 'var(--on-surface-variant)' }}>Average price across items</div>
         </div>
-        <div className="card card--p" style={{ borderLeft: '4px solid #ff6b59' }}>
+        <div className="card card--p" style={{ borderLeft: '4px solid var(--risk-critical)' }}>
           <div className="label-caps" style={{ color: 'var(--on-surface-variant)' }}>Total Monthly Demand</div>
           <div className="display-sm" style={{ margin: '8px 0', fontWeight: 700 }}>{fmtDemand(totalMonthlyDemand)}</div>
           <div className="body-xs" style={{ color: 'var(--on-surface-variant)' }}>Aggregated units ordered/month</div>

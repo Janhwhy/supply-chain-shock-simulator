@@ -17,7 +17,7 @@ export function ResilienceGauge({ label, value, color }) {
       <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: 40 }}>
         <svg className="gauge-card__svg" viewBox="0 0 36 36">
           <path
-            stroke="#31353a" fill="none" strokeWidth="3"
+            stroke="var(--surface-container-highest)" fill="none" strokeWidth="3"
             d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
           />
           <path

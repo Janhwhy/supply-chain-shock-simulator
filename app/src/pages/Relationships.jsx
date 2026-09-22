@@ -122,7 +122,7 @@ export function Relationships() {
           <div className="display-sm" style={{ margin: '8px 0', fontWeight: 700 }}>{totalRels}</div>
           <div className="body-xs" style={{ color: 'var(--on-surface-variant)' }}>Total supplier-to-product links</div>
         </div>
-        <div className="card card--p" style={{ borderLeft: '4px solid #ff6b59' }} title="Number of products that are supplied by only one supplier.">
+        <div className="card card--p" style={{ borderLeft: '4px solid var(--risk-critical)' }} title="Number of products that are supplied by only one supplier.">
           <div className="label-caps" style={{ color: 'var(--on-surface-variant)', display: 'flex', alignItems: 'center', gap: 4 }}>
             Sole-Source Links
             <span className="material-symbols-outlined" style={{fontSize: 14, cursor: 'help'}}>info</span>
@@ -130,7 +130,7 @@ export function Relationships() {
           <div className="display-sm" style={{ margin: '8px 0', fontWeight: 700 }}>{soleSourceCount}</div>
           <div className="body-xs" style={{ color: 'var(--on-surface-variant)' }}>Single-point vulnerability nodes</div>
         </div>
-        <div className="card card--p" style={{ borderLeft: '4px solid #ffa600' }} title="Average percentage of a product's volume that is sourced through a single link.">
+        <div className="card card--p" style={{ borderLeft: '4px solid var(--risk-high)' }} title="Average percentage of a product's volume that is sourced through a single link.">
           <div className="label-caps" style={{ color: 'var(--on-surface-variant)', display: 'flex', alignItems: 'center', gap: 4 }}>
             Average Supply Share
             <span className="material-symbols-outlined" style={{fontSize: 14, cursor: 'help'}}>info</span>
@@ -138,7 +138,7 @@ export function Relationships() {
           <div className="display-sm" style={{ margin: '8px 0', fontWeight: 700 }}>{(avgShare * 100).toFixed(1)}%</div>
           <div className="body-xs" style={{ color: 'var(--on-surface-variant)' }}>Mean volume allocation</div>
         </div>
-        <div className="card card--p" style={{ borderLeft: '4px solid #8b91c7' }} title="Total number of distinct suppliers providing goods to the network.">
+        <div className="card card--p" style={{ borderLeft: '4px solid var(--ml-accent)' }} title="Total number of distinct suppliers providing goods to the network.">
           <div className="label-caps" style={{ color: 'var(--on-surface-variant)', display: 'flex', alignItems: 'center', gap: 4 }}>
             Sourcing Suppliers
             <span className="material-symbols-outlined" style={{fontSize: 14, cursor: 'help'}}>info</span>
@@ -245,7 +245,10 @@ export function Relationships() {
                   <td style={{ color: 'var(--on-surface)' }}>{sup.products_count}</td>
                   <td>
                     {sup.sole_source_count > 0 ? (
-                      <span style={{ color: '#ff6b59', fontWeight: 600 }}>{sup.sole_source_count} ⚠️</span>
+                      <span style={{ color: 'var(--risk-critical)', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                        {sup.sole_source_count}
+                        <span className="material-symbols-outlined" style={{ fontSize: 14 }}>warning</span>
+                      </span>
                     ) : (
                       <span style={{ color: 'var(--on-surface-variant)' }}>0</span>
                     )}
@@ -255,7 +258,7 @@ export function Relationships() {
                       <div style={{ flex: 1, background: 'var(--surface-container-highest)', height: 8, borderRadius: 4, overflow: 'hidden', minWidth: 60, maxWidth: 100 }}>
                         <div 
                           style={{ 
-                            background: sup.highest_share > 0.7 ? '#ff6b59' : (sup.highest_share >= 0.4 ? '#ffa600' : '#4299e1'), 
+                            background: sup.highest_share > 0.7 ? 'var(--risk-critical)' : (sup.highest_share >= 0.4 ? 'var(--risk-high)' : 'var(--risk-medium)'), 
                             height: '100%', 
                             width: `${sup.highest_share * 100}%` 
                           }} 
@@ -293,7 +296,7 @@ export function Relationships() {
                                     <div style={{ flex: 1, background: 'var(--surface-container-high)', height: 6, borderRadius: 3, overflow: 'hidden', maxWidth: 120 }}>
                                       <div 
                                         style={{ 
-                                          background: r.supply_share > 0.7 ? '#ff6b59' : (r.supply_share >= 0.4 ? '#ffa600' : '#4299e1'), 
+                                          background: r.supply_share > 0.7 ? 'var(--risk-critical)' : (r.supply_share >= 0.4 ? 'var(--risk-high)' : 'var(--risk-medium)'), 
                                           height: '100%', 
                                           width: `${(r.supply_share || 0) * 100}%` 
                                         }} 
@@ -306,29 +309,9 @@ export function Relationships() {
                                 </td>
                                 <td style={{ padding: '8px 0', borderBottom: '1px solid var(--outline-variant)' }}>
                                   {r.is_sole_source ? (
-                                    <span style={{
-                                      background: 'rgba(255, 107, 89, 0.15)',
-                                      color: '#ff6b59',
-                                      padding: '4px 10px',
-                                      borderRadius: 100,
-                                      fontSize: 11,
-                                      fontWeight: 600,
-                                      border: '1px solid rgba(255, 107, 89, 0.3)'
-                                    }}>
-                                      Sole Source
-                                    </span>
+                                    <span className="risk-badge risk-badge--critical">Sole Source</span>
                                   ) : (
-                                    <span style={{
-                                      background: 'rgba(66, 153, 225, 0.15)',
-                                      color: '#4299e1',
-                                      padding: '4px 10px',
-                                      borderRadius: 100,
-                                      fontSize: 11,
-                                      fontWeight: 600,
-                                      border: '1px solid rgba(66, 153, 225, 0.3)'
-                                    }}>
-                                      Multi-Source
-                                    </span>
+                                    <span className="risk-badge risk-badge--low">Multi-Source</span>
                                   )}
                                 </td>
                               </tr>

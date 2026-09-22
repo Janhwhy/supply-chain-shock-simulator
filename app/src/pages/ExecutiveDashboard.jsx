@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { ScatterChart, Scatter, XAxis, YAxis, ZAxis, CartesianGrid, Tooltip, ReferenceLine, ResponsiveContainer } from 'recharts';
 import { api } from '../api/client';
 import { RiskBadge } from '../components/RiskBadge';
 import { LoadingSpinner, ErrorBox } from '../components/LoadingSpinner';
@@ -21,12 +22,51 @@ function ResilienceBar({ score, color }) {
 }
 
 function bandColor(band) {
-  if (!band) return '#8a919c';
+  if (!band) return 'var(--outline)';
   const b = band.toLowerCase();
-  if (b === 'critical') return '#ff6b59';
-  if (b === 'high')     return '#ffa600';
-  if (b === 'medium')   return '#464c89';
-  return '#4299e1';
+  if (b === 'critical') return 'var(--risk-critical)';
+  if (b === 'high')     return 'var(--risk-high)';
+  if (b === 'medium')   return 'var(--risk-medium)';
+  return 'var(--risk-low)';
+}
+
+// One canonical color per priority quadrant, used consistently for the scatter
+// dots, the legend, and (via the matching CSS quadrant background classes)
+// the quadrant regions themselves — previously the dot colors and the
+// quadrant-label colors disagreed for two of the four quadrants.
+const QUADRANT_COLORS = {
+  'Critical Priority': 'var(--risk-critical)',
+  'Monitor Closely': 'var(--risk-high)',
+  'Contingency Plan': 'var(--ml-accent)',
+  'Routine Review': 'var(--risk-low)',
+};
+function quadrantColor(q) {
+  return QUADRANT_COLORS[q] || 'var(--outline)';
+}
+
+function MatrixTooltip({ active, payload }) {
+  if (!active || !payload?.length) return null;
+  const d = payload[0].payload;
+  const color = quadrantColor(d.priority_quadrant);
+  return (
+    <div style={{
+      background: 'var(--tooltip-bg)', backdropFilter: 'blur(8px)',
+      border: '1px solid var(--outline-variant)', borderRadius: 8,
+      padding: '10px 14px', fontSize: 12, minWidth: 160,
+    }}>
+      <div style={{ fontWeight: 700, color: 'var(--text-inverse)', marginBottom: 6 }}>{d.supplier_name}</div>
+      <div style={{ color: 'var(--on-surface-variant)', marginBottom: 2 }}>
+        Resilience: <strong style={{ color: 'var(--text-inverse)' }}>{d.x.toFixed(3)}</strong>
+      </div>
+      <div style={{ color: 'var(--on-surface-variant)', marginBottom: 6 }}>
+        P95 Exposure: <strong style={{ color: 'var(--text-inverse)' }}>{fmt(d.y)}</strong>
+      </div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+        <span style={{ width: 8, height: 8, borderRadius: '50%', background: color, display: 'inline-block' }} />
+        <span style={{ color, fontWeight: 700, fontSize: 11 }}>{d.priority_quadrant}</span>
+      </div>
+    </div>
+  );
 }
 
 export function ExecutiveDashboard() {
@@ -60,8 +100,17 @@ export function ExecutiveDashboard() {
     .sort((a, b) => (b.total_p95_exposure || 0) - (a.total_p95_exposure || 0))
     .slice(0, 8);
 
-  // Build scatter points: normalize resilience_score and total_p95_exposure
-  const maxExp = Math.max(...matrix.map(r => r.total_p95_exposure || 0), 1);
+  // Scatter points for the priority matrix, plus a median-exposure reference
+  // line so the four quadrants read as real regions, not just background tint.
+  const matrixData = matrix.map(r => ({
+    ...r,
+    x: r.resilience_score ?? 0,
+    y: r.total_p95_exposure ?? 0,
+  }));
+  const sortedExposures = [...matrixData.map(d => d.y)].sort((a, b) => a - b);
+  const medianExposure = sortedExposures.length
+    ? sortedExposures[Math.floor(sortedExposures.length / 2)]
+    : 0;
 
   // Top 3 actions by ROI
   const top3Actions = [...playbook]
@@ -99,7 +148,7 @@ export function ExecutiveDashboard() {
             <span className="material-symbols-outlined" style={{fontSize: 14, cursor: 'help'}}>info</span>
           </span>
           <div className="kpi-card__value-row">
-            <span className="kpi-card__value" style={{ color: '#ff6b59' }}>{fmt(kpis?.total_network_exposure)}</span>
+            <span className="kpi-card__value" style={{ color: 'var(--risk-critical)' }}>{fmt(kpis?.total_network_exposure)}</span>
           </div>
         </div>
         <div className="kpi-card" title="Count of suppliers mapping to the 'Critical Priority' quadrant based on exposure and resilience.">
@@ -120,7 +169,7 @@ export function ExecutiveDashboard() {
             <span className="material-symbols-outlined" style={{fontSize: 14, cursor: 'help'}}>info</span>
           </span>
           <div className="kpi-card__value-row">
-            <span className="kpi-card__value" style={{ color: '#ffa600' }}>{fmt(kpis?.recommended_budget)}</span>
+            <span className="kpi-card__value" style={{ color: 'var(--risk-high)' }}>{fmt(kpis?.recommended_budget)}</span>
             <span className="kpi-card__trend data-mono" style={{ color: 'var(--outline)' }}>Allocated</span>
           </div>
         </div>
@@ -130,7 +179,7 @@ export function ExecutiveDashboard() {
             <span className="material-symbols-outlined" style={{fontSize: 14, cursor: 'help'}}>info</span>
           </span>
           <div className="kpi-card__value-row">
-            <span className="kpi-card__value" style={{ color: '#464c89' }}>
+            <span className="kpi-card__value" style={{ color: 'var(--ml-accent)' }}>
               {kpis?.portfolio_roi != null ? `${kpis.portfolio_roi.toFixed(2)}×` : '—'}
             </span>
           </div>
@@ -205,7 +254,7 @@ export function ExecutiveDashboard() {
                       <td className="data-mono" style={{ color: 'var(--on-surface-variant)' }}>{s.country}</td>
                       <td style={{ color: 'var(--on-surface-variant)' }}>{s.tier ?? '—'}</td>
                       <td>{s.risk_band ? <RiskBadge riskBand={s.risk_band} /> : '—'}</td>
-                      <td><ResilienceBar score={s.composite_score} color={color} /></td>
+                      <td><ResilienceBar score={s.resilience_score} color={color} /></td>
                       <td className="data-mono" style={{ color }}>{fmt(s.total_p95_exposure)}</td>
                     </tr>
                   );
@@ -219,53 +268,63 @@ export function ExecutiveDashboard() {
         <div className="card card--p">
           <div className="section-header">
             <h3>Risk Priority Matrix</h3>
-            <span className="material-symbols-outlined" style={{ color: 'var(--outline-variant)' }}>more_horiz</span>
           </div>
-          <div className="matrix-container">
-            <div className="matrix-quadrants">
-              <div className="matrix-quadrant" style={{ borderBottom: '1px solid rgba(64,71,81,0.4)', borderRight: '1px solid rgba(64,71,81,0.4)', background: 'rgba(70,76,137,0.05)' }}>
-                <span className="matrix-quadrant__label label-caps" style={{ color: '#464c89', top: 8, left: 8 }}>Monitor Closely</span>
+          <p className="body-xs" style={{ marginBottom: 8 }}>
+            Every supplier plotted by resilience (x) vs. worst-case exposure (y) — bubble size also
+            tracks exposure. Dashed lines mark the resilience midpoint and the median exposure
+            across this portfolio, splitting suppliers into the four priority quadrants below.
+          </p>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginBottom: 8 }}>
+            {Object.entries(QUADRANT_COLORS).map(([label, color]) => (
+              <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                <span style={{ width: 8, height: 8, borderRadius: '50%', background: color, display: 'inline-block' }} />
+                <span style={{ fontSize: 11, color: 'var(--on-surface-variant)' }}>{label}</span>
               </div>
-              <div className="matrix-quadrant" style={{ borderBottom: '1px solid rgba(64,71,81,0.4)', background: 'rgba(255,107,89,0.08)' }}>
-                <span className="matrix-quadrant__label label-caps" style={{ color: '#ff6b59', top: 8, right: 8 }}>Critical Priority</span>
-              </div>
-              <div className="matrix-quadrant" style={{ borderRight: '1px solid rgba(64,71,81,0.4)', background: 'rgba(0,61,92,0.05)' }}>
-                <span className="matrix-quadrant__label label-caps" style={{ color: '#4299e1', bottom: 8, left: 8 }}>Routine Review</span>
-              </div>
-              <div className="matrix-quadrant" style={{ background: 'rgba(255,166,0,0.05)' }}>
-                <span className="matrix-quadrant__label label-caps" style={{ color: '#ffa600', bottom: 8, right: 8 }}>Contingency</span>
-              </div>
-            </div>
-
-            {/* Scatter dots */}
-            {matrix.map(r => {
-              const x = Math.min(95, Math.max(2, (r.total_p95_exposure / maxExp) * 96));
-              const y = Math.min(95, Math.max(2, (1 - (r.resilience_score || 0)) * 96));
-              const qColor = r.priority_quadrant?.toLowerCase().includes('critical') ? '#ff6b59'
-                : r.priority_quadrant?.toLowerCase().includes('monitor') ? '#ffa600'
-                : r.priority_quadrant?.toLowerCase().includes('contingency') ? '#ffa600'
-                : '#464c89';
-              const sz = 8 + (r.total_p95_exposure / maxExp) * 16;
-              return (
-                <div
-                  key={r.supplier_id}
-                  className="matrix-dot"
-                  title={`${r.supplier_name || r.supplier_id}\n${r.priority_quadrant}`}
-                  style={{
-                    left: `${x}%`, top: `${y}%`,
-                    width: sz, height: sz,
-                    background: qColor,
-                    boxShadow: qColor === '#ff6b59' ? `0 0 8px rgba(255,107,89,0.4)` : 'none',
-                    transform: 'translate(-50%, -50%)',
-                  }}
-                  onClick={() => navigate(`/suppliers/${r.supplier_id}`)}
-                />
-              );
-            })}
-
-            <span className="matrix-axis-x">Total P95 Exposure →</span>
-            <span className="matrix-axis-y">Resilience Score →</span>
+            ))}
           </div>
+          <ResponsiveContainer width="100%" height={340}>
+            <ScatterChart margin={{ top: 8, right: 16, bottom: 24, left: 8 }}>
+              <CartesianGrid stroke="var(--outline-variant)" strokeDasharray="3 4" />
+              <XAxis
+                type="number" dataKey="x" domain={[0, 1]}
+                tick={{ fontSize: 11, fill: 'var(--on-surface-variant)' }}
+                tickFormatter={v => v.toFixed(1)}
+                label={{ value: 'Resilience Score →', position: 'insideBottom', offset: -12, fontSize: 11, fill: 'var(--on-surface-variant)' }}
+                stroke="var(--outline-variant)"
+              />
+              <YAxis
+                type="number" dataKey="y"
+                tick={{ fontSize: 11, fill: 'var(--on-surface-variant)' }}
+                tickFormatter={fmt}
+                width={64}
+                label={{ value: 'P95 Exposure', angle: -90, position: 'insideLeft', fontSize: 11, fill: 'var(--on-surface-variant)' }}
+                stroke="var(--outline-variant)"
+              />
+              <ZAxis type="number" dataKey="y" range={[40, 500]} />
+              <ReferenceLine x={0.5} stroke="var(--outline)" strokeDasharray="4 3" />
+              <ReferenceLine y={medianExposure} stroke="var(--outline)" strokeDasharray="4 3" />
+              <Tooltip content={<MatrixTooltip />} cursor={{ stroke: 'var(--outline)', strokeDasharray: '3 3' }} />
+              <Scatter
+                data={matrixData}
+                onClick={d => navigate(`/suppliers/${d.supplier_id}`)}
+                cursor="pointer"
+                shape={(props) => {
+                  const { cx, cy } = props;
+                  const r = Math.max(4, Math.sqrt((props.payload.y / (medianExposure || 1))) * 5);
+                  const isCritical = props.payload.priority_quadrant === 'Critical Priority';
+                  const color = quadrantColor(props.payload.priority_quadrant);
+                  return (
+                    <circle
+                      cx={cx} cy={cy} r={r}
+                      fill={color} fillOpacity={0.85}
+                      stroke={isCritical ? color : 'transparent'}
+                      strokeWidth={isCritical ? 4 : 0} strokeOpacity={0.25}
+                    />
+                  );
+                }}
+              />
+            </ScatterChart>
+          </ResponsiveContainer>
         </div>
 
         {/* Bottom row */}
@@ -336,13 +395,13 @@ export function ExecutiveDashboard() {
             </p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               {top3Actions.map((action, i) => {
-                const roiColor = action.roi >= 3 ? 'var(--primary)' : action.roi >= 1 ? '#ffa600' : '#ff6b59';
+                const roiColor = action.roi >= 3 ? 'var(--primary)' : action.roi >= 1 ? 'var(--risk-high)' : 'var(--risk-critical)';
                 const icon = getActionIcon(action.recommended_action);
                 const priorityColors = {
-                  'Critical Priority': { bg: 'rgba(255,107,89,0.08)', border: 'rgba(255,107,89,0.25)', accent: '#ff6b59' },
-                  'Monitor Closely':   { bg: 'rgba(255,166,0,0.08)',  border: 'rgba(255,166,0,0.25)',  accent: '#ffa600' },
+                  'Critical Priority': { bg: 'color-mix(in srgb, var(--risk-critical) 10%, transparent)', border: 'color-mix(in srgb, var(--risk-critical) 28%, transparent)', accent: 'var(--risk-critical)' },
+                  'Monitor Closely':   { bg: 'color-mix(in srgb, var(--risk-high) 10%, transparent)',     border: 'color-mix(in srgb, var(--risk-high) 28%, transparent)',     accent: 'var(--risk-high)' },
                 };
-                const pStyle = priorityColors[action.priority_quadrant] || { bg: 'var(--surface-container-high)', border: 'var(--outline-variant)', accent: '#464c89' };
+                const pStyle = priorityColors[action.priority_quadrant] || { bg: 'var(--surface-container-high)', border: 'var(--outline-variant)', accent: 'var(--ml-accent)' };
                 return (
                   <div
                     key={i}

@@ -413,12 +413,14 @@ def get_suppliers(
             if "resilience_score" in df.columns:
                 df["resilience_score"] = (df["resilience_score"] + score_noise).clip(0.0, 1.0)
 
-        # Derive risk_band from composite_score quartiles
-        if "composite_score" in df.columns:
+        # Derive risk_band from resilience_score quartiles (higher resilience = safer,
+        # so low resilience_score => Critical). composite_score is the risk-direction
+        # complement of resilience_score and is not used for banding.
+        if "resilience_score" in df.columns:
             q25, q50, q75 = (
-                df["composite_score"].quantile(0.25),
-                df["composite_score"].quantile(0.50),
-                df["composite_score"].quantile(0.75),
+                df["resilience_score"].quantile(0.25),
+                df["resilience_score"].quantile(0.50),
+                df["resilience_score"].quantile(0.75),
             )
             def _band(s):
                 if pd.isna(s):
@@ -430,7 +432,7 @@ def get_suppliers(
                 elif s <= q75:
                     return "Medium"
                 return "Low"
-            df["risk_band"] = df["composite_score"].apply(_band)
+            df["risk_band"] = df["resilience_score"].apply(_band)
 
         # Optional filters
         if risk_band:
@@ -497,8 +499,10 @@ def get_supplier_detail(supplier_id: int) -> dict:
     if not res_row.empty:
         try:
             from src.scoring import get_score_interpretation
-            res_val = profile["resilience_scores"].get("composite_score", 0.5)
-            profile["score_interpretation"] = get_score_interpretation(float(res_val))
+            # composite_score is risk-direction (higher = riskier); get_score_interpretation
+            # expects resilience-direction (higher = safer), so invert.
+            risk_val = profile["resilience_scores"].get("composite_score", 0.5)
+            profile["score_interpretation"] = get_score_interpretation(1.0 - float(risk_val))
         except Exception as e:
             print(f"Warning: could not get score interpretation: {e}")
             profile["score_interpretation"] = {}
@@ -873,9 +877,10 @@ def get_kpis() -> KPISummary:
     # risk_eliminated ≈ ROI × budget (since ROI = risk_eliminated / cost)
     total_risk_elim      = portfolio_roi * recommended_budget
 
-    # Network resilience scores
+    # Network resilience scores. composite_score is risk-direction (higher = riskier);
+    # invert to resilience-direction to stay consistent with resilience_after below.
     score_col = "composite_score" if "composite_score" in df_res.columns else "resilience_score"
-    resilience_before    = float(df_res[score_col].mean())
+    resilience_before    = float(1.0 - df_res[score_col].mean()) if score_col == "composite_score" else float(df_res[score_col].mean())
 
     # Projected score: apply risk reduction estimates to at-risk suppliers
     WEIGHTS = {"dependency": 0.40, "geographic": 0.25, "reliability": 0.20, "substitutability": 0.15}
