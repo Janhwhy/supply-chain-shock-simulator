@@ -25,6 +25,12 @@
   --text-inverse:             #ffffff;
   --tooltip-bg:               rgba(26, 42, 74, 0.85);
 
+  /* Accent (decorative brand emphasis — logo, active nav, tab highlights;
+     distinct from --primary, which marks primary actions/scores) */
+  --accent:        #464c89;
+  --accent-strong: #003d5c;
+  --ml-accent:     #6366f1;
+
   /* Semantic Risk Colors */
   --risk-critical: #ff6b59;
   --risk-high:     #ffa600;
@@ -39,6 +45,21 @@
   --sp-lg:   40px;
   --sp-xl:   64px;
   --sp-gutter: 24px;
+
+  /* Radius */
+  --radius-sm:   6px;
+  --radius-md:   8px;
+  --radius-lg:   16px;
+  --radius-pill: 100px;
+
+  /* Elevation */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.24);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.28);
+  --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.36);
+
+  /* Typography */
+  --font-sans: 'Inter', sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
 }
 
 [data-theme="light"] {
@@ -63,12 +84,20 @@
   --component-bg-focus:       #e9ecef;
   --text-inverse:             #212529;
   --tooltip-bg:               rgba(255, 255, 255, 0.95);
-  
+
+  --accent:        #3730a3;
+  --accent-strong: #004a70;
+  --ml-accent:     #4338ca;
+
   /* Semantic Risk Colors for Light Mode (Tweak for better contrast) */
   --risk-critical: #d32f2f;
   --risk-high:     #ed6c02;
   --risk-medium:   #1976d2;
   --risk-low:      #2e7d32;
+
+  --shadow-sm: 0 1px 2px rgba(33, 37, 41, 0.08);
+  --shadow-md: 0 4px 12px rgba(33, 37, 41, 0.10);
+  --shadow-lg: 0 12px 32px rgba(33, 37, 41, 0.14);
 }
 
 /* ── Reset & Base ─────────────────────────────────────────────────────────── */
@@ -77,7 +106,7 @@
 html { font-size: 16px; }
 
 body {
-  font-family: 'Inter', sans-serif;
+  font-family: var(--font-sans);
   background: var(--background);
   color: var(--on-surface);
   min-height: 100vh;
@@ -90,13 +119,15 @@ button { cursor: pointer; border: none; background: none; font-family: inherit; 
 
 /* ── Typography ───────────────────────────────────────────────────────────── */
 .display-lg  { font-size: 48px; font-weight: 700; line-height: 56px; letter-spacing: -0.02em; }
+.display-sm  { font-size: 36px; font-weight: 700; line-height: 44px; letter-spacing: -0.02em; }
 .headline-lg { font-size: 32px; font-weight: 600; line-height: 40px; letter-spacing: -0.01em; }
 .headline-lg-mobile { font-size: 24px; font-weight: 600; line-height: 32px; }
 .title-md    { font-size: 20px; font-weight: 600; line-height: 28px; }
 .body-lg     { font-size: 16px; font-weight: 400; line-height: 24px; }
 .body-sm     { font-size: 14px; font-weight: 400; line-height: 20px; }
+.body-xs     { font-size: 12px; font-weight: 400; line-height: 16px; color: var(--on-surface-variant); }
 .label-caps  { font-size: 12px; font-weight: 700; line-height: 16px; letter-spacing: 0.05em; text-transform: uppercase; }
-.data-mono   { font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 500; line-height: 18px; }
+.data-mono   { font-family: var(--font-mono); font-size: 13px; font-weight: 500; line-height: 18px; }
 
 /* ── App Shell Layout ─────────────────────────────────────────────────────── */
 .app-shell {
@@ -133,7 +164,7 @@ button { cursor: pointer; border: none; background: none; font-family: inherit; 
 .side-nav__logo {
   font-family: 'Material Symbols Outlined';
   font-size: 32px;
-  color: #464c89;
+  color: var(--accent);
   font-variation-settings: 'FILL' 1;
 }
 .side-nav__title {
@@ -161,7 +192,7 @@ button { cursor: pointer; border: none; background: none; font-family: inherit; 
   align-items: center;
   gap: var(--sp-sm);
   padding: var(--sp-xs) var(--sp-sm);
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   color: var(--on-surface-variant);
   font-size: 12px;
   font-weight: 700;
@@ -211,14 +242,7 @@ button { cursor: pointer; border: none; background: none; font-family: inherit; 
   flex-shrink: 0;
   z-index: 30;
 }
-.top-bar__nav { display: flex; gap: var(--sp-md); }
-.top-bar__nav a {
-  font-size: 16px;
-  color: var(--on-surface-variant);
-  transition: color 0.2s;
-}
-.top-bar__nav a:hover { color: #464c89; }
-.top-bar__nav a.active { color: #464c89; border-bottom: 2px solid #464c89; padding-bottom: 4px; font-weight: 600; }
+.top-bar__title { font-size: 18px; font-weight: 600; color: var(--on-surface); }
 .top-bar__actions { display: flex; align-items: center; gap: var(--sp-md); }
 .top-bar__icon-btn {
   width: 32px; height: 32px;
@@ -229,7 +253,7 @@ button { cursor: pointer; border: none; background: none; font-family: inherit; 
   font-family: 'Material Symbols Outlined';
   font-size: 20px;
 }
-.top-bar__icon-btn:hover { background: var(--surface-container-high); color: #464c89; }
+.top-bar__icon-btn:hover { background: var(--surface-container-high); color: var(--accent); }
 .top-bar__avatar { width: 32px; height: 32px; border-radius: 50%; background: var(--surface-container-high); border: 1px solid var(--outline-variant); display: flex; align-items: center; justify-content: center; font-family: 'Material Symbols Outlined'; font-size: 18px; color: var(--on-surface-variant); }
 
 .page-scroll {
@@ -242,44 +266,49 @@ button { cursor: pointer; border: none; background: none; font-family: inherit; 
 .card {
   background: var(--surface-container);
   border: 1px solid var(--outline-variant);
-  border-radius: 8px;
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
 }
 .card--p { padding: var(--sp-md); }
 
 /* ── KPI Cards ────────────────────────────────────────────────────────────── */
 .kpi-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: var(--sp-gutter);
   margin-bottom: var(--sp-lg);
 }
 .kpi-card {
   background: var(--surface-container);
   border: 1px solid var(--outline-variant);
-  border-radius: 8px;
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
   padding: var(--sp-md);
   display: flex;
   flex-direction: column;
   gap: var(--sp-xs);
+  transition: box-shadow 0.15s ease, transform 0.15s ease;
 }
+.kpi-card:hover { box-shadow: var(--shadow-md); transform: translateY(-1px); }
 .kpi-card__label { font-size: 15px; font-weight: 600; color: var(--on-surface-variant); line-height: 22px; }
 .kpi-card__value-row { display: flex; align-items: baseline; gap: var(--sp-sm); margin-top: auto; flex-wrap: wrap; }
 .kpi-card__value { font-size: 36px; font-weight: 700; line-height: 44px; letter-spacing: -0.02em; white-space: nowrap; }
-.kpi-card__trend { font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 500; display: flex; align-items: center; }
+.kpi-card__trend { font-family: var(--font-mono); font-size: 12px; font-weight: 500; display: flex; align-items: center; }
 .kpi-card__trend .icon { font-family: 'Material Symbols Outlined'; font-size: 16px; }
 
 /* ── Risk Badge ───────────────────────────────────────────────────────────── */
 .risk-badge {
   display: inline-flex; align-items: center;
   padding: 2px 8px;
-  border-radius: 100px;
+  border-radius: var(--radius-pill);
   font-size: 12px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase;
   border-width: 1px; border-style: solid;
 }
-.risk-badge--critical { background: rgba(255,107,89,0.15); color: var(--risk-critical); border-color: rgba(255,107,89,0.3); box-shadow: 0 0 8px rgba(255,107,89,0.2); }
-.risk-badge--high     { background: rgba(255,166,0,0.15);  color: var(--risk-high);     border-color: rgba(255,166,0,0.3); }
-.risk-badge--medium   { background: rgba(70,76,137,0.15);  color: #8b91c7;              border-color: rgba(70,76,137,0.3); }
-.risk-badge--low      { background: rgba(0,61,92,0.15);    color: #4299e1;              border-color: rgba(0,61,92,0.3); }
+.risk-badge--critical { background: color-mix(in srgb, var(--risk-critical) 15%, transparent); color: var(--risk-critical); border-color: color-mix(in srgb, var(--risk-critical) 30%, transparent); box-shadow: 0 0 8px color-mix(in srgb, var(--risk-critical) 20%, transparent); }
+.risk-badge--high     { background: color-mix(in srgb, var(--risk-high) 15%, transparent);     color: var(--risk-high);     border-color: color-mix(in srgb, var(--risk-high) 30%, transparent); }
+.risk-badge--medium   { background: color-mix(in srgb, var(--risk-medium) 15%, transparent);   color: var(--risk-medium);   border-color: color-mix(in srgb, var(--risk-medium) 30%, transparent); }
+.risk-badge--low      { background: color-mix(in srgb, var(--risk-low) 15%, transparent);      color: var(--risk-low);      border-color: color-mix(in srgb, var(--risk-low) 30%, transparent); }
+.risk-badge--anomaly  { background: color-mix(in srgb, var(--ml-accent) 15%, transparent);     color: var(--ml-accent);     border-color: color-mix(in srgb, var(--ml-accent) 30%, transparent); }
 
 /* ── Table ────────────────────────────────────────────────────────────────── */
 .data-table {
@@ -297,21 +326,22 @@ button { cursor: pointer; border: none; background: none; font-family: inherit; 
 .data-table td {
   padding: var(--sp-xs) var(--sp-sm);
   font-size: 14px;
-  border-bottom: 1px solid rgba(64,71,81,0.5);
+  border-bottom: 1px solid color-mix(in srgb, var(--outline-variant) 50%, transparent);
 }
 .data-table tbody tr { transition: background 0.15s; cursor: pointer; }
 .data-table tbody tr:hover { background: var(--surface-container-high); }
 .data-table tbody tr:last-child td { border-bottom: none; }
 
 /* ── Resilience Bar ───────────────────────────────────────────────────────── */
-.resilience-bar { width: 100%; height: 6px; background: var(--surface); border-radius: 100px; overflow: hidden; }
-.resilience-bar__fill { height: 100%; border-radius: 100px; }
+.resilience-bar { width: 100%; height: 6px; background: var(--surface); border-radius: var(--radius-pill); overflow: hidden; }
+.resilience-bar__fill { height: 100%; border-radius: var(--radius-pill); }
 
 /* ── Gauge ────────────────────────────────────────────────────────────────── */
 .gauge-card {
   background: var(--surface-container);
   border: 1px solid var(--outline-variant);
-  border-radius: 8px;
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
   padding: var(--sp-md);
   display: flex;
   flex-direction: column;
@@ -323,7 +353,7 @@ button { cursor: pointer; border: none; background: none; font-family: inherit; 
 .gauge-card__label { font-size: 12px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: var(--on-surface-variant); position: absolute; top: var(--sp-sm); left: var(--sp-sm); }
 .gauge-card__svg { width: 96px; height: 96px; transform: rotate(-90deg); }
 .gauge-card__center { position: absolute; font-size: 28px; font-weight: 600; line-height: 40px; }
-.gauge-card__status { font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 500; margin-top: var(--sp-sm); }
+.gauge-card__status { font-family: var(--font-mono); font-size: 13px; font-weight: 500; margin-top: var(--sp-sm); }
 
 /* ── Scatter / Priority Matrix ────────────────────────────────────────────── */
 .matrix-container {
@@ -394,8 +424,8 @@ button { cursor: pointer; border: none; background: none; font-family: inherit; 
   margin-bottom: var(--sp-md);
 }
 .section-header h3 { font-size: 20px; font-weight: 600; }
-.section-header__btn { font-size: 12px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: #464c89; transition: color 0.2s; }
-.section-header__btn:hover { color: #003d5c; }
+.section-header__btn { font-size: 12px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: var(--accent); transition: color 0.2s; }
+.section-header__btn:hover { color: var(--accent-strong); }
 
 /* ── Network Overview ─────────────────────────────────────────────────────── */
 .network-grid {
@@ -407,7 +437,8 @@ button { cursor: pointer; border: none; background: none; font-family: inherit; 
 .network-graph-panel {
   background: var(--surface-container);
   border: 1px solid var(--outline-variant);
-  border-radius: 8px;
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -421,8 +452,8 @@ button { cursor: pointer; border: none; background: none; font-family: inherit; 
 }
 
 /* ── Geographic bars ──────────────────────────────────────────────────────── */
-.geo-bar-track { width: 100%; height: 8px; background: var(--surface-bright); border-radius: 100px; overflow: hidden; }
-.geo-bar-fill  { height: 100%; border-radius: 100px; }
+.geo-bar-track { width: 100%; height: 8px; background: var(--surface-bright); border-radius: var(--radius-pill); overflow: hidden; }
+.geo-bar-fill  { height: 100%; border-radius: var(--radius-pill); }
 
 /* ── Heatmap ──────────────────────────────────────────────────────────────── */
 .heatmap-cell {
@@ -435,7 +466,7 @@ button { cursor: pointer; border: none; background: none; font-family: inherit; 
 .scenario-tabs {
   background: var(--surface-container);
   border: 1px solid var(--outline-variant);
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   padding: var(--sp-base);
   display: flex;
   gap: var(--sp-base);
@@ -444,7 +475,7 @@ button { cursor: pointer; border: none; background: none; font-family: inherit; 
 }
 .scenario-tab {
   padding: var(--sp-xs) var(--sp-md);
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   font-size: 14px; font-weight: 600;
   white-space: nowrap;
   color: var(--on-surface-variant);
@@ -452,13 +483,14 @@ button { cursor: pointer; border: none; background: none; font-family: inherit; 
   transition: background 0.15s, color 0.15s;
 }
 .scenario-tab:hover { background: var(--surface-container-high); color: var(--on-surface); }
-.scenario-tab.active { background: #003d5c; color: #ffffff; border-color: #464c89; }
+.scenario-tab.active { background: var(--accent-strong); color: #ffffff; border-color: var(--accent); }
 
 /* ── Playbook summary banner ──────────────────────────────────────────────── */
 .playbook-banner {
   background: var(--surface-container);
   border: 1px solid var(--outline-variant);
-  border-radius: 8px;
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
   padding: var(--sp-md);
   display: flex;
   flex-wrap: wrap;
@@ -473,7 +505,7 @@ button { cursor: pointer; border: none; background: none; font-family: inherit; 
   content: '';
   position: absolute;
   inset: 0;
-  background: rgba(153,203,255,0.05);
+  background: color-mix(in srgb, var(--primary) 5%, transparent);
   pointer-events: none;
 }
 .playbook-banner__item {
@@ -492,7 +524,7 @@ button { cursor: pointer; border: none; background: none; font-family: inherit; 
 .loading-container { display: flex; align-items: center; justify-content: center; height: 200px; flex-direction: column; gap: var(--sp-sm); }
 .spinner { width: 40px; height: 40px; border: 3px solid var(--outline-variant); border-top-color: var(--primary); border-radius: 50%; animation: spin 0.8s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
-.error-box { background: rgba(255,107,89,0.1); border: 1px solid rgba(255,107,89,0.3); border-radius: 8px; padding: var(--sp-md); color: var(--risk-critical); font-size: 14px; }
+.error-box { background: color-mix(in srgb, var(--risk-critical) 10%, transparent); border: 1px solid color-mix(in srgb, var(--risk-critical) 30%, transparent); border-radius: var(--radius-md); padding: var(--sp-md); color: var(--risk-critical); font-size: 14px; }
 
 /* ── Supplier detail ──────────────────────────────────────────────────────── */
 .gauges-grid {
@@ -527,7 +559,7 @@ button { cursor: pointer; border: none; background: none; font-family: inherit; 
 
 /* ── Toasts ───────────────────────────────────────────────────────────────── */
 .toast-container { position: fixed; bottom: var(--sp-md); right: var(--sp-md); z-index: 9999; display: flex; flex-direction: column; gap: var(--sp-xs); }
-.toast { background: var(--surface-container-highest); border: 1px solid var(--outline-variant); border-radius: 8px; padding: var(--sp-xs) var(--sp-sm); font-size: 14px; color: var(--on-surface); animation: toast-in 0.3s ease; }
+.toast { background: var(--surface-container-highest); border: 1px solid var(--outline-variant); border-radius: var(--radius-md); box-shadow: var(--shadow-md); padding: var(--sp-xs) var(--sp-sm); font-size: 14px; color: var(--on-surface); animation: toast-in 0.3s ease; }
 @keyframes toast-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
 
 /* ── Responsive ───────────────────────────────────────────────────────────── */

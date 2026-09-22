@@ -3,6 +3,17 @@
 import numpy as np
 import pandas as pd
 
+from src import graph as gr
+
+FACTOR_NAMES = [
+    "dependency",
+    "geographic",
+    "reliability",
+    "substitutability",
+    "revenue_weighted",
+    "propagation",
+]
+
 
 def compute_dependency_risk(df_relationships):
     """
@@ -166,6 +177,140 @@ def compute_substitutability_risk(df_relationships):
                 risk_series[s_id] = (val - min_val) / (max_val - min_val)
                 
     return risk_series
+
+
+def compute_revenue_weighted_risk(df_relationships, df_products):
+    """
+    Computes dependency risk weighted by the actual revenue a product represents
+    (unit_cost x monthly_demand), rather than raw supply-share alone.
+
+    Args:
+        df_relationships (pd.DataFrame): Sourcing relationships containing:
+            - supplier_id (int)
+            - product_id (int)
+            - supply_share (float)
+        df_products (pd.DataFrame): Product registry containing:
+            - product_id (int)
+            - unit_cost (float)
+            - monthly_demand (float)
+
+    Returns:
+        pd.Series: Series indexed by supplier_id containing normalized revenue-weighted
+            risk scores (0 to 1).
+    """
+    if df_relationships.empty or df_products.empty:
+        return pd.Series(dtype=float)
+
+    df = pd.merge(df_relationships, df_products[["product_id", "unit_cost", "monthly_demand"]],
+                   on="product_id", how="left")
+    df["revenue_exposure"] = df["supply_share"] * df["unit_cost"] * df["monthly_demand"]
+    exposure = df.groupby("supplier_id")["revenue_exposure"].sum()
+
+    e_min, e_max = exposure.min(), exposure.max()
+    if e_max == e_min:
+        return pd.Series(0.0, index=exposure.index)
+    return (exposure - e_min) / (e_max - e_min)
+
+
+def compute_risk_factor_matrix(df_suppliers, df_suppliers_enriched, df_relationships, df_products, G):
+    """
+    Builds the raw (unweighted) risk-factor matrix shared by every downstream
+    scorecard/model: the four base factors from compute_resilience_scores, plus
+    revenue_weighted concentration, plus network risk propagation (see
+    src/graph.py::compute_risk_propagation) seeded by an equal-weighted composite
+    of the four base factors.
+
+    Args:
+        df_suppliers (pd.DataFrame): Supplier registry.
+        df_suppliers_enriched (pd.DataFrame): Enriched supplier registry.
+        df_relationships (pd.DataFrame): Sourcing relationships.
+        df_products (pd.DataFrame): Product registry.
+        G (nx.DiGraph): Dependency graph from src.graph.build_dependency_graph.
+
+    Returns:
+        pd.DataFrame: Index=supplier_id, columns=FACTOR_NAMES, values in [0, 1].
+    """
+    dependency = compute_dependency_risk(df_relationships)
+    geographic = compute_geographic_risk(df_suppliers)
+    reliability = compute_reliability_risk(df_suppliers_enriched)
+    substitutability = compute_substitutability_risk(df_relationships)
+    revenue_weighted = compute_revenue_weighted_risk(df_relationships, df_products)
+
+    base_composite = pd.DataFrame({
+        "dependency": dependency,
+        "geographic": geographic,
+        "reliability": reliability,
+        "substitutability": substitutability,
+    }).reindex(df_suppliers["supplier_id"]).fillna(0.0).mean(axis=1)
+
+    propagation = gr.compute_risk_propagation(G, base_composite).set_index("supplier_id")["propagated_risk_score"]
+
+    df = pd.DataFrame({
+        "dependency": dependency,
+        "geographic": geographic,
+        "reliability": reliability,
+        "substitutability": substitutability,
+        "revenue_weighted": revenue_weighted,
+        "propagation": propagation,
+    })
+    df.index.name = "supplier_id"
+    return df.reindex(df_suppliers["supplier_id"]).fillna(0.0)
+
+
+def compute_anomaly_scores(df_suppliers_enriched, contamination=0.1, random_state=42):
+    """
+    Flags suppliers whose *operational behavior* is statistically anomalous
+    relative to the population, using unsupervised Isolation Forest (Liu,
+    Ting & Zhou, ICDM 2008) on raw operational features — deliberately not
+    the same FACTOR_NAMES used everywhere else in this module, since the
+    point of this signal is independence from the supervised risk score: it
+    catches suppliers that behave weirdly, not suppliers that are
+    structurally exposed. A supplier can be anomalous without being risky
+    (e.g. unusually fast/reliable) or risky without being anomalous (e.g.
+    uniformly poor delivery like several peers) — this is a complementary
+    early-warning layer, not a replacement for the supervised scores.
+
+    Args:
+        df_suppliers_enriched (pd.DataFrame): Enriched supplier data containing:
+            - supplier_id (int)
+            - avg_delay_days (float)
+            - delay_volatility (float)
+            - rejection_rate (float)
+        contamination (float): Expected fraction of anomalous suppliers. Default 0.1.
+        random_state (int): Seed for reproducibility. Default 42.
+
+    Returns:
+        pd.DataFrame: DataFrame with columns:
+            - supplier_id (int)
+            - anomaly_score (float, 0 to 1, min-max normalized; higher = more anomalous)
+            - is_anomalous (bool)
+    """
+    from sklearn.ensemble import IsolationForest
+
+    cols = ["avg_delay_days", "delay_volatility", "rejection_rate"]
+    df = df_suppliers_enriched.copy()
+    for col in cols:
+        if col not in df.columns:
+            df[col] = 0.0
+        df[col] = df[col].fillna(0.0)
+
+    if df.empty or len(df) < 2:
+        return pd.DataFrame(columns=["supplier_id", "anomaly_score", "is_anomalous"])
+
+    X = df[cols].to_numpy()
+    model = IsolationForest(contamination=contamination, random_state=random_state)
+    is_anomalous = model.fit_predict(X) == -1
+    # decision_function: higher = more normal, so negate for "higher = more anomalous"
+    raw_scores = -model.decision_function(X)
+
+    r_min, r_max = raw_scores.min(), raw_scores.max()
+    anomaly_score = np.zeros_like(raw_scores) if r_max == r_min else (raw_scores - r_min) / (r_max - r_min)
+
+    return pd.DataFrame({
+        "supplier_id": df["supplier_id"].to_numpy(),
+        "anomaly_score": anomaly_score,
+        "is_anomalous": is_anomalous,
+    })
 
 
 def compute_resilience_scores(df_suppliers, df_suppliers_enriched, df_relationships, df_simulation_results, weights=None):

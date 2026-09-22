@@ -1,4 +1,4 @@
-import { NavLink, useNavigate } from 'react-router-dom';
+import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 
 const NAV_LINKS = [
@@ -12,8 +12,16 @@ const NAV_LINKS = [
   { to: '/transactions', icon: 'receipt_long', label: 'Transactions' },
 ];
 
+function getPageTitle(pathname) {
+  const match = NAV_LINKS.find(({ to }) => to === '/' ? pathname === '/' : pathname.startsWith(to));
+  if (match) return match.label;
+  if (pathname.startsWith('/suppliers/')) return 'Supplier Detail';
+  return 'ShockProof';
+}
+
 export function Layout({ children, onToast }) {
   const navigate = useNavigate();
+  const location = useLocation();
   const [theme, setTheme] = useState(() => localStorage.getItem('theme') || 'dark');
 
   useEffect(() => {
@@ -70,12 +78,7 @@ export function Layout({ children, onToast }) {
       {/* ── Main ── */}
       <div className="main-content">
         <header className="top-bar">
-          <nav className="top-bar__nav">
-            <NavLink to="/" end className={({ isActive }) => isActive ? 'active' : ''}>Dashboard</NavLink>
-            <NavLink to="/network" className={({ isActive }) => isActive ? 'active' : ''}>Risk Map</NavLink>
-            <NavLink to="/suppliers" className={({ isActive }) => isActive ? 'active' : ''}>Inventory</NavLink>
-            <NavLink to="/playbook" className={({ isActive }) => isActive ? 'active' : ''}>Analytics</NavLink>
-          </nav>
+          <span className="top-bar__title">{getPageTitle(location.pathname)}</span>
           <div className="top-bar__actions">
             <button className="top-bar__icon-btn" onClick={toggleTheme} title={`Switch to ${theme === 'dark' ? 'Light' : 'Dark'} Mode`}>
               {theme === 'dark' ? 'light_mode' : 'dark_mode'}

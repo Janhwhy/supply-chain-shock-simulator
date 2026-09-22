@@ -12,21 +12,24 @@ is highly stable across independent simulation draws (~0.98 Precision@10
 self-consistency), meaning the low scores above reflect a real, closeable
 gap rather than inherent randomness in the task.
 
-That motivated adding a 5th risk factor, revenue_weighted (supply-share
-concentration weighted by the product's actual revenue — unit_cost x
-monthly_demand — rather than raw share alone), since the simulator's
-ground truth is dominated by revenue-weighted exposure. The functional form
-(a convex combination of risk factors) is otherwise kept identical to
-src/scoring.py — only the weights (and now this one added factor) are
-learned/fit to data.
+That motivated adding two more risk factors beyond the original four:
+revenue_weighted (supply-share concentration weighted by the product's
+actual revenue — unit_cost x monthly_demand — rather than raw share alone),
+since the simulator's ground truth is dominated by revenue-weighted
+exposure, and propagation (multi-hop network risk propagation over the
+supplier-product graph — see src/graph.py::compute_risk_propagation), which
+captures correlated exposure via shared products that none of the other
+per-supplier factors see. The functional form (a convex combination of risk
+factors) is otherwise kept identical to src/scoring.py — only the weights
+(and these two added factors) are learned/fit to data.
 
 Method
 ------
 1. Train on seeds [0, n_train): for each seed, bootstrap-resample the
-   transaction history, recompute the five raw risk-factor series
-   (dependency/geographic/reliability/substitutability/revenue_weighted),
-   and run the full Monte Carlo simulation for ground truth (total P95
-   exposure per supplier).
+   transaction history, recompute the six raw risk-factor series
+   (dependency/geographic/reliability/substitutability/revenue_weighted/
+   propagation), and run the full Monte Carlo simulation for ground truth
+   (total P95 exposure per supplier).
 2. Optimize weights on the simplex (non-negative, sum to 1) via an exhaustive
    vectorized grid search (step = 1/resolution) that maximizes the mean
    Spearman rank correlation between the weighted composite risk and
@@ -61,57 +64,32 @@ from eval_harness import (
     build_enriched_suppliers,
     compute_ground_truth,
     compute_method_scores,
-    compute_revenue_weighted_risk,
     precision_at_k,
     ndcg_at_k,
 )
 from src import scoring as sc
 from src import graph as gr
+from src.scoring import FACTOR_NAMES, compute_risk_factor_matrix
 
 OUT_DIR = os.path.join(os.path.dirname(__file__), "results")
-FACTOR_NAMES = ["dependency", "geographic", "reliability", "substitutability", "revenue_weighted"]
 DEFAULT_WEIGHTS_FOR_DISPLAY = {
     "dependency": 0.40,
     "geographic": 0.25,
     "reliability": 0.20,
     "substitutability": 0.15,
     "revenue_weighted": None,  # not present in the original hand-tuned scorecard
+    "propagation": None,  # not present in the original hand-tuned scorecard
 }
 
 
-# ---------------------------------------------------------------------------
-# Raw (unweighted) risk-factor matrix — same components as
-# src/scoring.py::compute_resilience_scores, exposed individually.
-# ---------------------------------------------------------------------------
-
-def compute_risk_factor_matrix(df_suppliers, df_enriched, df_relationships, df_products):
-    dependency = sc.compute_dependency_risk(df_relationships)
-    geographic = sc.compute_geographic_risk(df_suppliers)
-    reliability = sc.compute_reliability_risk(df_enriched)
-    substitutability = sc.compute_substitutability_risk(df_relationships)
-    revenue_weighted = compute_revenue_weighted_risk(df_relationships, df_products)
-
-    df = pd.DataFrame(
-        {
-            "dependency": dependency,
-            "geographic": geographic,
-            "reliability": reliability,
-            "substitutability": substitutability,
-            "revenue_weighted": revenue_weighted,
-        }
-    )
-    df.index.name = "supplier_id"
-    return df.reindex(df_suppliers["supplier_id"]).fillna(0.0)
-
-
-def build_seed_records(seeds, df_suppliers, df_products, df_relationships,
+def build_seed_records(seeds, df_suppliers, df_products, df_relationships, G,
                         delay_by_supplier, rej_by_supplier, n_runs, label):
     records = []
     for seed in seeds:
         rng = np.random.default_rng(seed)
         df_enriched = build_enriched_suppliers(df_suppliers, delay_by_supplier, rej_by_supplier, rng)
         ground_truth = compute_ground_truth(df_enriched, df_relationships, df_products, n_runs=n_runs, seed=seed)
-        factor_matrix = compute_risk_factor_matrix(df_suppliers, df_enriched, df_relationships, df_products)
+        factor_matrix = compute_risk_factor_matrix(df_suppliers, df_enriched, df_relationships, df_products, G)
         records.append({"seed": seed, "df_enriched": df_enriched, "ground_truth": ground_truth, "factors": factor_matrix})
         print(f"  [{label}] seed {seed} prepared "
               f"(ground truth suppliers={len(ground_truth)})")
@@ -151,14 +129,15 @@ def _rank_columns(mat):
 
 
 def optimize_weights(train_records, resolution=25):
-    """Exhaustive grid search over the 4-dim weight simplex (step = 1/resolution),
-    maximizing mean Spearman correlation with ground-truth exposure across train seeds.
-    Vectorized: evaluates every grid point against every seed in one shot per seed."""
-    candidates = simplex_grid(len(FACTOR_NAMES), resolution)  # (n_candidates, 4)
+    """Exhaustive grid search over the len(FACTOR_NAMES)-dim weight simplex
+    (step = 1/resolution), maximizing mean Spearman correlation with
+    ground-truth exposure across train seeds. Vectorized: evaluates every
+    grid point against every seed in one shot per seed."""
+    candidates = simplex_grid(len(FACTOR_NAMES), resolution)  # (n_candidates, len(FACTOR_NAMES))
     total_scores = np.zeros(len(candidates))
 
     for rec in train_records:
-        factors = rec["factors"].to_numpy()  # (n_suppliers, 4)
+        factors = rec["factors"].to_numpy()  # (n_suppliers, len(FACTOR_NAMES))
         gt = rec["ground_truth"].reindex(rec["factors"].index).fillna(0.0).to_numpy()
 
         composite_matrix = factors @ candidates.T  # (n_suppliers, n_candidates)
@@ -187,12 +166,12 @@ def optimize_weights(train_records, resolution=25):
 # ---------------------------------------------------------------------------
 
 def evaluate_all_methods_on_record(rec, learned_weights, df_pagerank, df_suppliers,
-                                    df_relationships, df_products, k, rng):
+                                    df_relationships, df_products, G, k, rng):
     ground_truth = rec["ground_truth"]
     factors = rec["factors"]
     df_enriched = rec["df_enriched"]
 
-    method_scores = compute_method_scores(df_suppliers, df_enriched, df_relationships, df_products, df_pagerank, rng)
+    method_scores = compute_method_scores(df_suppliers, df_enriched, df_relationships, df_products, df_pagerank, G, rng)
 
     w = np.array([learned_weights[f] for f in FACTOR_NAMES])
     method_scores["composite_learned"] = pd.Series(
@@ -238,11 +217,11 @@ def run(n_train, n_test, n_runs, k, out_dir):
     test_seeds = list(range(n_train, n_train + n_test))
 
     print(f"\nPreparing {n_train} TRAIN seeds (weight fitting)...")
-    train_records = build_seed_records(train_seeds, df_suppliers, df_products, df_relationships,
+    train_records = build_seed_records(train_seeds, df_suppliers, df_products, df_relationships, G,
                                         delay_by_supplier, rej_by_supplier, n_runs, "train")
 
     print(f"\nPreparing {n_test} TEST seeds (held-out evaluation, disjoint from train)...")
-    test_records = build_seed_records(test_seeds, df_suppliers, df_products, df_relationships,
+    test_records = build_seed_records(test_seeds, df_suppliers, df_products, df_relationships, G,
                                        delay_by_supplier, rej_by_supplier, n_runs, "test")
 
     print("\nOptimizing weights on TRAIN seeds via exhaustive simplex grid search "
@@ -262,7 +241,7 @@ def run(n_train, n_test, n_runs, k, out_dir):
     for rec in test_records:
         rng = np.random.default_rng(rec["seed"] + 100000)
         df_metrics = evaluate_all_methods_on_record(
-            rec, learned_weights, df_pagerank, df_suppliers, df_relationships, df_products, k, rng
+            rec, learned_weights, df_pagerank, df_suppliers, df_relationships, df_products, G, k, rng
         )
         all_rows.append(df_metrics)
 

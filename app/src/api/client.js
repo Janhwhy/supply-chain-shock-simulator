@@ -46,4 +46,5 @@ export const api = {
   criticalSuppliers: () => apiFetch('/api/critical-suppliers'),
   centrality: () => apiFetch('/api/centrality'),
   sensitivity: () => apiFetch('/api/sensitivity'),
+  modelInfo: () => apiFetch('/api/model-info'),
 };

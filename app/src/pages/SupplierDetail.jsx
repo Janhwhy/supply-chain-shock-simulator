@@ -1,9 +1,19 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { BarChart, Bar, XAxis, YAxis, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import { api } from '../api/client';
 import { ResilienceGauge } from '../components/ResilienceGauge';
 import { RiskBadge } from '../components/RiskBadge';
 import { LoadingSpinner, ErrorBox } from '../components/LoadingSpinner';
+
+const FACTOR_LABELS = {
+  dependency: 'Dependency',
+  geographic: 'Geographic',
+  reliability: 'Reliability',
+  substitutability: 'Substitutability',
+  revenue_weighted: 'Revenue-Weighted Concentration',
+  propagation: 'Network Propagation',
+};
 
 function fmt(n, unit = '₹') {
   if (n == null) return '—';
@@ -25,6 +35,7 @@ const GAUGE_DEFS = [
   { key: 'geo_risk',             label: 'Geographic Risk',      color: '#ffa600' },
   { key: 'reliability_risk',     label: 'Reliability Risk',     color: '#954e9b' },
   { key: 'substitutability_risk',label: 'Substitutability Risk',color: '#ff6b59' },
+  { key: 'ml_risk_score',        label: 'ML Risk Score',        color: '#6366f1' },
 ];
 
 export function SupplierDetail() {
@@ -69,6 +80,15 @@ export function SupplierDetail() {
               Tier {data.tier ?? '—'} Supplier
             </span>
             {pm.priority_quadrant && <RiskBadge quadrant={pm.priority_quadrant} />}
+            {scores.is_anomalous && (
+              <span
+                className="risk-badge risk-badge--anomaly"
+                title="Isolation Forest flags this supplier's operational behavior as statistically anomalous relative to the population"
+              >
+                <span className="material-symbols-outlined" style={{ fontSize: 12 }}>troubleshoot</span>
+                Anomalous
+              </span>
+            )}
           </div>
         </div>
         <div style={{ display: 'flex', gap: 12 }}>
@@ -122,6 +142,36 @@ export function SupplierDetail() {
           <ResilienceGauge key={key} label={label} value={scores[key]} color={color} />
         ))}
       </div>
+
+      {/* Why is this supplier risky? — SHAP feature attribution */}
+      {scores.top_risk_factors?.length > 0 && (
+        <div className="card card--p" style={{ marginBottom: 24 }}>
+          <h3 className="title-md" style={{ marginBottom: 4 }}>Why is this supplier risky?</h3>
+          <p className="body-xs" style={{ marginBottom: 16 }}>
+            SHAP feature attribution for the live ML risk model — how much each factor pushed this
+            supplier's predicted risk up (red) or down (green), relative to the current supplier population.
+          </p>
+          <ResponsiveContainer width="100%" height={Math.max(120, scores.top_risk_factors.length * 44)}>
+            <BarChart
+              data={scores.top_risk_factors.map(f => ({ ...f, label: FACTOR_LABELS[f.factor] || f.factor }))}
+              layout="vertical"
+              margin={{ top: 4, right: 24, bottom: 4, left: 8 }}
+            >
+              <XAxis type="number" hide />
+              <YAxis type="category" dataKey="label" width={180} tick={{ fill: 'var(--on-surface-variant)', fontSize: 12 }} axisLine={false} tickLine={false} />
+              <Tooltip
+                formatter={(value) => [value.toFixed(2), 'Contribution']}
+                contentStyle={{ background: 'var(--tooltip-bg)', border: '1px solid var(--outline-variant)', borderRadius: 8, color: 'var(--on-surface)' }}
+              />
+              <Bar dataKey="contribution" radius={4}>
+                {scores.top_risk_factors.map((f, i) => (
+                  <Cell key={i} fill={f.contribution >= 0 ? '#ff6b59' : '#38A169'} />
+                ))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      )}
 
       {/* Simulation Chart + Recommended Action */}
       <div className="detail-grid">

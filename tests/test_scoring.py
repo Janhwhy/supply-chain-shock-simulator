@@ -10,9 +10,13 @@ from src.scoring import (
     compute_reliability_risk,
     compute_substitutability_risk,
     compute_resilience_scores,
+    compute_risk_factor_matrix,
+    compute_anomaly_scores,
     get_score_interpretation,
-    sensitivity_analysis
+    sensitivity_analysis,
+    FACTOR_NAMES,
 )
+from src.graph import build_dependency_graph
 
 
 @pytest.fixture
@@ -42,6 +46,14 @@ def sample_relationships():
         {"supplier_id": 1, "product_id": 20, "supply_share": 0.20, "is_sole_source": False},
         {"supplier_id": 2, "product_id": 10, "supply_share": 0.60, "is_sole_source": True},  # Share > 50% & Sole source
         {"supplier_id": 3, "product_id": 20, "supply_share": 0.80, "is_sole_source": False}  # Share > 50%
+    ])
+
+
+@pytest.fixture
+def sample_products():
+    return pd.DataFrame([
+        {"product_id": 10, "unit_cost": 5.0, "monthly_demand": 100},
+        {"product_id": 20, "unit_cost": 10.0, "monthly_demand": 50},
     ])
 
 
@@ -295,6 +307,46 @@ def test_compute_priority_matrix(sample_suppliers, sample_suppliers_enriched, sa
     # Check that quadrants are populated and contain valid categories
     valid_quadrants = {'Critical Priority', 'Monitor Closely', 'Contingency Plan', 'Routine Review'}
     assert df_priority['priority_quadrant'].isin(valid_quadrants).all()
+
+
+def test_compute_risk_factor_matrix_shape(sample_suppliers, sample_suppliers_enriched, sample_relationships, sample_products):
+    """Test compute_risk_factor_matrix returns the full FACTOR_NAMES columns, in [0, 1], for every supplier."""
+    # build_dependency_graph reads a reliability_score column off df_suppliers
+    # directly (unrelated to the enriched-data reliability factor below).
+    suppliers_for_graph = sample_suppliers.assign(reliability_score=0.8)
+    G = build_dependency_graph(sample_relationships, suppliers_for_graph, sample_products)
+    df_factors = compute_risk_factor_matrix(
+        sample_suppliers, sample_suppliers_enriched, sample_relationships, sample_products, G
+    )
+
+    assert list(df_factors.columns) == FACTOR_NAMES
+    assert len(df_factors) == len(sample_suppliers)
+    assert (df_factors >= 0.0).all().all()
+    assert (df_factors <= 1.0).all().all()
+
+
+def test_compute_anomaly_scores():
+    """Test that a clear operational outlier is flagged is_anomalous with the
+    highest anomaly_score, and normal suppliers score in [0, 1]."""
+    rng = np.random.default_rng(0)
+    n_normal = 11
+    df = pd.DataFrame({
+        "supplier_id": range(1, n_normal + 2),
+        "avg_delay_days": list(rng.uniform(0, 5, n_normal)) + [500.0],
+        "delay_volatility": list(rng.uniform(0, 2, n_normal)) + [200.0],
+        "rejection_rate": list(rng.uniform(0, 0.05, n_normal)) + [0.9],
+    })
+
+    df_anom = compute_anomaly_scores(df, contamination=0.1, random_state=42)
+
+    assert list(df_anom.columns) == ["supplier_id", "anomaly_score", "is_anomalous"]
+    assert len(df_anom) == len(df)
+    assert (df_anom["anomaly_score"] >= 0.0).all()
+    assert (df_anom["anomaly_score"] <= 1.0).all()
+
+    outlier_row = df_anom[df_anom["supplier_id"] == n_normal + 1].iloc[0]
+    assert outlier_row["is_anomalous"] == True
+    assert outlier_row["anomaly_score"] == df_anom["anomaly_score"].max()
 
 
 def test_resilience_score_quartiles(sample_suppliers, sample_suppliers_enriched, sample_relationships, sample_simulation_results):

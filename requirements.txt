@@ -8,6 +8,9 @@ uvicorn
 faker
 python-dotenv
 scipy
+scikit-learn
+torch
+shap
 matplotlib
 plotly
 pytest

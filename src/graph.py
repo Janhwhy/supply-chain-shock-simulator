@@ -171,6 +171,107 @@ def compute_centrality_metrics(G):
     return pd.DataFrame(records)
 
 
+def build_bipartite_matrices(G):
+    """
+    Builds the normalized bipartite adjacency matrices shared by every
+    graph-propagation method on this project (the hand-designed diffusion in
+    compute_risk_propagation below, and the learned GNN in
+    evaluation/gnn_model.py) — single source of truth for "how the bipartite
+    adjacency is built" so both stay consistent with the same graph.
+
+    Args:
+        G (nx.DiGraph): The supply chain directed graph (supplier -> product,
+            weight=supply_share), as built by build_dependency_graph.
+
+    Returns:
+        tuple:
+            - supplier_ids (list[int]): supplier_id per row of s2p / column of p2s.
+            - product_ids (list[int]): product_id per column of s2p / row of p2s.
+            - s2p (np.ndarray): row-normalized supplier -> product matrix
+              (each supplier's outgoing weights sum to 1).
+            - p2s (np.ndarray): column-normalized product -> supplier matrix
+              (each product's outgoing weights, to its co-suppliers, sum to 1).
+    """
+    supplier_nodes = [n for n, d in G.nodes(data=True) if d.get("type") == "supplier"]
+    product_nodes = [n for n, d in G.nodes(data=True) if d.get("type") == "product"]
+
+    if not supplier_nodes or not product_nodes:
+        return [], [], np.zeros((0, 0)), np.zeros((0, 0))
+
+    supplier_ids = [int(n.split("_", 1)[1]) for n in supplier_nodes]
+    product_ids = [int(n.split("_", 1)[1]) for n in product_nodes]
+    s_idx = {n: i for i, n in enumerate(supplier_nodes)}
+    p_idx = {n: i for i, n in enumerate(product_nodes)}
+
+    # Raw supplier -> product weight matrix (supply_share on each edge)
+    raw = np.zeros((len(supplier_nodes), len(product_nodes)))
+    for u, v, data in G.edges(data=True):
+        if u in s_idx and v in p_idx:
+            raw[s_idx[u], p_idx[v]] = data.get("weight", 0.0)
+
+    # Row-normalize: supplier -> its products, weighted by relative supply share
+    row_sums = raw.sum(axis=1, keepdims=True)
+    s2p = np.divide(raw, row_sums, out=np.zeros_like(raw), where=row_sums != 0)
+
+    # Column-normalize the same edges (transposed): product -> its co-suppliers
+    col_sums = raw.sum(axis=0, keepdims=True)
+    p2s = np.divide(raw.T, col_sums.T, out=np.zeros_like(raw.T), where=col_sums.T != 0)
+
+    return supplier_ids, product_ids, s2p, p2s
+
+
+def compute_risk_propagation(G, base_risk, n_hops=3, damping=0.5):
+    """
+    Diffuses each supplier's own risk score across the bipartite supplier-product
+    graph to surface correlated ("systemic") exposure: a supplier that shares
+    products with other high-risk suppliers inherits some of that risk, since a
+    shock large enough to hit the shared product's supply base tends to hit
+    co-suppliers together (same disruption channel). Existing single-hop factors
+    (e.g. substitutability_risk) only count how many alternatives a product has,
+    not how risky those alternatives are, so they miss this effect entirely.
+
+    Hand-designed propagation (fixed per-hop damping) — contrast with the
+    learned version of the same idea in evaluation/gnn_model.py::BipartiteGCN,
+    which uses this same bipartite structure (build_bipartite_matrices) but
+    learns the propagation weights from data instead of hand-setting them.
+
+    Args:
+        G (nx.DiGraph): The supply chain directed graph (supplier -> product,
+            weight=supply_share), as built by build_dependency_graph.
+        base_risk (pd.Series): Risk score per supplier_id (0-1) used as the
+            propagation seed, e.g. the existing composite risk factors.
+        n_hops (int): Number of supplier->product->supplier round trips to
+            diffuse risk across. Default 3.
+        damping (float): Per-hop decay applied to each successive hop's
+            contribution. Default 0.5.
+
+    Returns:
+        pd.DataFrame: DataFrame with columns:
+            - supplier_id (int)
+            - propagated_risk_score (float, 0 to 1, min-max normalized)
+    """
+    supplier_ids, product_ids, s2p, p2s = build_bipartite_matrices(G)
+
+    if not supplier_ids or not product_ids:
+        return pd.DataFrame(columns=["supplier_id", "propagated_risk_score"])
+
+    r0 = base_risk.reindex(supplier_ids).fillna(0.0).to_numpy(dtype=float)
+    accumulated = r0.copy()
+    current = r0.copy()
+    for hop in range(1, n_hops + 1):
+        product_risk = current @ s2p  # suppliers -> shared products
+        current = product_risk @ p2s  # products -> co-suppliers
+        accumulated += (damping ** hop) * current
+
+    a_min, a_max = accumulated.min(), accumulated.max()
+    if a_max == a_min:
+        scaled = np.zeros_like(accumulated)
+    else:
+        scaled = (accumulated - a_min) / (a_max - a_min)
+
+    return pd.DataFrame({"supplier_id": supplier_ids, "propagated_risk_score": scaled})
+
+
 def identify_critical_suppliers(
     df_pagerank, df_centrality, df_relationships, top_n=10
 ):

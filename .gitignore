@@ -12,6 +12,7 @@ __pycache__/
 *$py.class
 .venv/
 venv/
+venv_new/
 env/
 ENV/
 *.egg-info/

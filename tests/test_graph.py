@@ -9,6 +9,7 @@ from src.graph import (
     build_dependency_graph,
     compute_pagerank,
     compute_centrality_metrics,
+    compute_risk_propagation,
     identify_critical_suppliers,
     graph_summary,
 )
@@ -143,6 +144,37 @@ class TestGraphModule(unittest.TestCase):
             "closeness_centrality",
         ]:
             self.assertTrue(all(df_cent[col] >= 0.0))
+
+    def test_compute_risk_propagation(self):
+        # Supplier 1 (risky) and Supplier 2 (safe) co-supply Product 10.
+        # Supplier 3 (also safe) is isolated on Product 20 — no co-suppliers.
+        G = build_dependency_graph(
+            self.df_relationships, self.df_suppliers, self.df_products
+        )
+        base_risk = pd.Series({1: 0.9, 2: 0.1, 3: 0.1})
+        df_prop = compute_risk_propagation(G, base_risk, n_hops=3, damping=0.5)
+
+        self.assertListEqual(
+            list(df_prop.columns), ["supplier_id", "propagated_risk_score"]
+        )
+        self.assertEqual(len(df_prop), 3)
+        self.assertTrue((df_prop["propagated_risk_score"] >= 0.0).all())
+        self.assertTrue((df_prop["propagated_risk_score"] <= 1.0).all())
+
+        scores = df_prop.set_index("supplier_id")["propagated_risk_score"]
+        # Supplier 2 inherits risk from its risky co-supplier (Supplier 1);
+        # Supplier 3 has the same own-risk but no risky co-suppliers.
+        self.assertGreater(scores[2], scores[3])
+
+    def test_compute_risk_propagation_empty_graph(self):
+        empty_df = pd.DataFrame(columns=["supplier_id", "product_id", "supply_share"])
+        G = build_dependency_graph(empty_df, self.df_suppliers.iloc[0:0], empty_df)
+        df_prop = compute_risk_propagation(G, pd.Series(dtype=float))
+
+        self.assertListEqual(
+            list(df_prop.columns), ["supplier_id", "propagated_risk_score"]
+        )
+        self.assertEqual(len(df_prop), 0)
 
     def test_identify_critical_suppliers(self):
         G = build_dependency_graph(

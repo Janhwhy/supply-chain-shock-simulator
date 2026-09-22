@@ -265,6 +265,7 @@ function NetworkGraph({ nodes, edges, criticalIds }) {
       country: n.country,
       tier: n.tier,
       pagerank: n.pagerank_score || 0,
+      propagatedRisk: n.propagated_risk_score || 0,
       isCritical: criticalIds.has(n.node_id),
     })),
     links: edges.map(e => ({
@@ -377,6 +378,7 @@ function NetworkGraph({ nodes, edges, criticalIds }) {
               ['Country', tooltip.node.country || '—'],
               ['Tier', tooltip.node.tier != null ? `Tier ${tooltip.node.tier}` : '—'],
               ['Dependency Score', tooltip.node.pagerank.toFixed(4)],
+              ['Propagated Risk', tooltip.node.propagatedRisk.toFixed(3)],
             ] : []),
           ].map(([label, val]) => (
             <div key={label} style={{ display: 'flex', justifyContent: 'space-between', gap: 16, fontSize: 12 }}>

@@ -270,14 +270,17 @@ export function SupplierRisk() {
               <th style={{ cursor: 'pointer' }} onClick={() => toggleSort('composite_score')}>
                 Composite Score (higher = riskier) {sortKey === 'composite_score' ? (sortDir === -1 ? '↓' : '↑') : ''}
               </th>
+              <th style={{ cursor: 'pointer' }} onClick={() => toggleSort('ml_risk_score')} title="Gradient-boosted trees model trained on Monte Carlo exposure ground truth">
+                ML Risk Score {sortKey === 'ml_risk_score' ? (sortDir === -1 ? '↓' : '↑') : ''}
+              </th>
               <th style={{ cursor: 'pointer' }} onClick={() => toggleSort('resilience_score')}>
                 Resilience (0–1) {sortKey === 'resilience_score' ? (sortDir === -1 ? '↓' : '↑') : ''}
               </th>
               <th style={{ cursor: 'pointer' }} onClick={() => toggleSort('total_p95_exposure')}>
                 P95 Worst-Case Loss {sortKey === 'total_p95_exposure' ? (sortDir === -1 ? '↓' : '↑') : ''}
               </th>
-              <th title="This supplier is the sole source for one or more products — any disruption halts production directly">
-                Sole Source
+              <th title="Sole Source: this supplier is the only source for one or more products. Anomalous: Isolation Forest flags unusual operational behavior.">
+                Flags
               </th>
             </tr>
           </thead>
@@ -291,7 +294,7 @@ export function SupplierRisk() {
               return (
                 <React.Fragment key={quadrant}>
                   <tr onClick={() => toggleGroup(quadrant)} style={{ cursor: 'pointer', background: 'var(--component-bg-focus)' }}>
-                    <td colSpan={9} style={{ padding: '8px 16px', fontWeight: 700, color: qColor, borderBottom: '1px solid var(--outline-variant)' }}>
+                    <td colSpan={10} style={{ padding: '8px 16px', fontWeight: 700, color: qColor, borderBottom: '1px solid var(--outline-variant)' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                         <span className="material-symbols-outlined" style={{ fontSize: 18, transition: 'transform 0.2s', transform: collapsedGroups[quadrant] ? 'rotate(0deg)' : 'rotate(90deg)' }}>chevron_right</span>
                         {quadrant} ({groupData.length})
@@ -331,6 +334,14 @@ export function SupplierRisk() {
                         <td>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                             <div style={{ width: 48, height: 5, borderRadius: 3, background: 'var(--surface-container-high)', overflow: 'hidden' }}>
+                              <div style={{ width: `${((s.ml_risk_score || 0) * 100).toFixed(0)}%`, height: '100%', background: 'var(--ml-accent)' }} />
+                            </div>
+                            <span className="data-mono" style={{ color: 'var(--ml-accent)', fontSize: 12 }}>{s.ml_risk_score != null ? s.ml_risk_score.toFixed(3) : '—'}</span>
+                          </div>
+                        </td>
+                        <td>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <div style={{ width: 48, height: 5, borderRadius: 3, background: 'var(--surface-container-high)', overflow: 'hidden' }}>
                               <div style={{ width: `${((s.resilience_score || 0) * 100).toFixed(0)}%`, height: '100%', background: 'var(--primary)' }} />
                             </div>
                             <span className="data-mono" style={{ color: 'var(--primary)', fontSize: 12 }}>{s.resilience_score != null ? s.resilience_score.toFixed(3) : '—'}</span>
@@ -338,21 +349,31 @@ export function SupplierRisk() {
                         </td>
                         <td className="data-mono" style={{ color, fontWeight: 600 }}>{fmt(s.total_p95_exposure)}</td>
                         <td style={{ textAlign: 'center' }}>
-                          {isSoleSource ? (
-                            <span
-                              style={{
-                                display: 'inline-flex', alignItems: 'center', gap: 3,
-                                background: 'rgba(255,107,89,0.12)', border: '1px solid rgba(255,107,89,0.3)',
-                                color: '#ff6b59', borderRadius: 4, padding: '2px 7px', fontSize: 11, fontWeight: 700,
-                              }}
-                              title="This supplier is the sole source for one or more products — any disruption halts production directly"
-                            >
-                              <span className="material-symbols-outlined" style={{ fontSize: 12 }}>warning</span>
-                              Sole Source
-                            </span>
-                          ) : (
-                            <span style={{ color: 'var(--outline)', fontSize: 11 }}>—</span>
-                          )}
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, justifyContent: 'center' }}>
+                            {isSoleSource && (
+                              <span
+                                className="risk-badge risk-badge--critical"
+                                style={{ gap: 3 }}
+                                title="This supplier is the sole source for one or more products — any disruption halts production directly"
+                              >
+                                <span className="material-symbols-outlined" style={{ fontSize: 12 }}>warning</span>
+                                Sole Source
+                              </span>
+                            )}
+                            {s.is_anomalous && (
+                              <span
+                                className="risk-badge risk-badge--anomaly"
+                                style={{ gap: 3 }}
+                                title="Isolation Forest flags this supplier's operational behavior (delay/volatility/rejection) as statistically anomalous relative to the population — an independent signal from the supervised risk score"
+                              >
+                                <span className="material-symbols-outlined" style={{ fontSize: 12 }}>troubleshoot</span>
+                                Anomalous
+                              </span>
+                            )}
+                            {!isSoleSource && !s.is_anomalous && (
+                              <span style={{ color: 'var(--outline)', fontSize: 11 }}>—</span>
+                            )}
+                          </div>
                         </td>
                       </tr>
                     );

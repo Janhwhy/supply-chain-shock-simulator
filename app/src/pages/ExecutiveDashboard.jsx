@@ -35,6 +35,7 @@ export function ExecutiveDashboard() {
   const [suppliers, setSuppliers] = useState([]);
   const [matrix, setMatrix] = useState([]);
   const [playbook, setPlaybook] = useState([]);
+  const [modelInfo, setModelInfo] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -48,6 +49,8 @@ export function ExecutiveDashboard() {
         setLoading(false);
       })
       .catch(e => { setError(e.message); setLoading(false); });
+    // Non-critical — the page still works if the model hasn't been trained yet.
+    api.modelInfo().then(setModelInfo).catch(() => {});
   }, []);
 
   if (loading) return <LoadingSpinner message="Loading executive summary…" />;
@@ -131,6 +134,33 @@ export function ExecutiveDashboard() {
               {kpis?.portfolio_roi != null ? `${kpis.portfolio_roi.toFixed(2)}×` : '—'}
             </span>
           </div>
+        </div>
+        <div
+          className="kpi-card"
+          title="The live ML risk model (evaluation/train_ml_models.py benchmarks gradient-boosted trees, an MLP, a learning-to-rank model, and a graph neural network — this is whichever won by held-out Spearman correlation against Monte Carlo ground truth)."
+        >
+          <span className="kpi-card__label" style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+            Live Risk Model
+            <span className="material-symbols-outlined" style={{ fontSize: 14, cursor: 'help' }}>info</span>
+          </span>
+          {modelInfo?.loaded ? (
+            <>
+              <div className="kpi-card__value-row">
+                <span className="kpi-card__value" style={{ color: 'var(--ml-accent)', fontSize: 28 }}>
+                  {modelInfo.model_name?.toUpperCase()}
+                </span>
+              </div>
+              <span className="kpi-card__trend data-mono" style={{ color: 'var(--outline)' }}>
+                Held-out Spearman {modelInfo.test_spearman?.toFixed(3)}
+              </span>
+            </>
+          ) : (
+            <div className="kpi-card__value-row">
+              <span className="body-sm" style={{ color: 'var(--on-surface-variant)' }}>
+                Not trained yet — run evaluation/train_ml_models.py
+              </span>
+            </div>
+          )}
         </div>
       </div>
 

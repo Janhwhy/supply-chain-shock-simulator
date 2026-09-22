@@ -4,6 +4,7 @@ Run locally with:
     uvicorn api.main:app --reload --host 0.0.0.0 --port 8000
 """
 
+import json
 import sys
 import os
 from contextlib import asynccontextmanager
@@ -19,13 +20,123 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")
 
 from src.db import get_engine, read_table, read_query, test_connection
 from src.scenarios import get_all_scenarios, scenarios_to_dataframe, get_scenario_by_id
-from src.graph import build_dependency_graph, compute_pagerank
-from src.scoring import sensitivity_analysis
+from src.graph import build_dependency_graph, compute_pagerank, build_bipartite_matrices
+from src.scoring import sensitivity_analysis, compute_risk_factor_matrix, compute_anomaly_scores, FACTOR_NAMES
 from src.simulation import run_simulation, analyse_distribution
 import numpy as np
 
 # ── Known scenario IDs ────────────────────────────────────────────────────────
 VALID_SCENARIO_IDS = {s.scenario_id for s in get_all_scenarios()}
+
+# ── Trained ML risk model, loaded once at startup (see evaluation/train_ml_models.py) ──
+# model_type "sklearn" (gbt/mlp/ltr, joblib) or "torch" (gnn, state_dict) — see
+# evaluation/train_ml_models.py's persistence step for how each gets written.
+MODEL_DIR = os.path.join(os.path.dirname(__file__), "..", "evaluation", "results", "models")
+_ml_model = None
+_ml_manifest = None
+
+
+def _load_ml_model() -> None:
+    """Loads the persisted winning model + manifest, if one has been trained.
+    Not fatal if missing — ml_risk_score simply comes back null."""
+    global _ml_model, _ml_manifest
+    try:
+        with open(os.path.join(MODEL_DIR, "model_manifest.json")) as f:
+            manifest = json.load(f)
+
+        if manifest.get("model_type") == "torch":
+            import torch
+            from evaluation.gnn_model import BipartiteGCN
+            arch = manifest["gnn_arch"]
+            model = BipartiteGCN(supplier_dim=arch["supplier_dim"], product_dim=arch["product_dim"],
+                                  hidden_dim=arch["hidden_dim"])
+            model.load_state_dict(torch.load(os.path.join(MODEL_DIR, "best_model.pt")))
+            model.eval()
+            model._y_scale = manifest["gnn_y_scale"]
+        else:
+            import joblib
+            model = joblib.load(os.path.join(MODEL_DIR, "best_model.joblib"))
+
+        _ml_model, _ml_manifest = model, manifest
+        print(f"[ShockProof API] Loaded ML risk model '{_ml_manifest['model_name']}' "
+              f"(held-out test spearman={_ml_manifest.get('test_spearman', float('nan')):.3f}).")
+    except Exception as exc:
+        _ml_model, _ml_manifest = None, None
+        print(f"[ShockProof API] No trained ML model found ({exc}); ml_risk_score will be "
+              f"null until evaluation/train_ml_models.py is run.")
+
+
+def _predict_ml_score(model, model_name: str, X: np.ndarray) -> np.ndarray:
+    """gbt/mlp are regressors (predict); ltr is a pairwise-trained linear
+    classifier whose decision_function IS the learned ranking score."""
+    if model_name == "ltr":
+        return model.decision_function(X)
+    return model.predict(X)
+
+
+def _score_live_suppliers(df_suppliers, df_suppliers_enriched, df_relationships, df_products, G) -> pd.DataFrame:
+    """
+    Builds the same risk-factor feature matrix used at training time
+    (src.scoring.compute_risk_factor_matrix) and scores it with the loaded ML
+    model. Returns a DataFrame indexed by supplier_id with:
+      - propagated_risk_score: always available (pure graph computation).
+      - ml_risk_score: min-max normalized to [0, 1] across the current
+        supplier set (None for every row if no model is loaded), matching
+        the relative-ranking convention every other risk factor already uses.
+    """
+    factors = compute_risk_factor_matrix(df_suppliers, df_suppliers_enriched, df_relationships, df_products, G)
+    result = pd.DataFrame(index=factors.index)
+    result["propagated_risk_score"] = factors["propagation"]
+
+    if _ml_model is not None:
+        model_name = _ml_manifest["model_name"]
+        if model_name == "gnn":
+            from evaluation.gnn_model import predict_gnn, prepare_product_features
+            supplier_ids, product_ids, s2p, p2s = build_bipartite_matrices(G)
+            product_features = prepare_product_features(df_products, product_ids)
+            raw = predict_gnn(_ml_model, factors, supplier_ids, product_ids, s2p, p2s, product_features)
+        else:
+            raw = pd.Series(
+                _predict_ml_score(_ml_model, model_name, factors[FACTOR_NAMES].to_numpy()),
+                index=factors.index,
+            )
+        r_min, r_max = raw.min(), raw.max()
+        result["ml_risk_score"] = 0.0 if r_max == r_min else (raw - r_min) / (r_max - r_min)
+    else:
+        result["ml_risk_score"] = None
+
+    return result
+
+
+def _explain_supplier(supplier_id: int, df_suppliers, df_suppliers_enriched, df_relationships,
+                       df_products, G) -> list[dict]:
+    """Top contributing risk factors for one supplier via SHAP (see
+    evaluation/explain_model.py). Returns [] if no model is loaded, the
+    supplier isn't present, or explanation fails for any reason (this is a
+    "nice to have" layer on top of the score, never worth failing the
+    request over)."""
+    if _ml_model is None:
+        return []
+    try:
+        from evaluation.explain_model import compute_shap_values, top_factors
+        factors = compute_risk_factor_matrix(df_suppliers, df_suppliers_enriched, df_relationships, df_products, G)
+        if supplier_id not in factors.index:
+            return []
+
+        model_name = _ml_manifest["model_name"]
+        gnn_context = None
+        if model_name == "gnn":
+            from evaluation.gnn_model import prepare_product_features
+            supplier_ids, product_ids, s2p, p2s = build_bipartite_matrices(G)
+            product_features = prepare_product_features(df_products, product_ids)
+            gnn_context = (supplier_ids, product_ids, s2p, p2s, product_features, factors)
+
+        shap_df = compute_shap_values(_ml_model, model_name, factors,
+                                       target_supplier_id=supplier_id, gnn_context=gnn_context)
+        return top_factors(shap_df.loc[supplier_id])
+    except Exception as exc:
+        print(f"Warning: SHAP explanation failed for supplier {supplier_id}: {exc}")
+        return []
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -148,6 +259,7 @@ class GraphNode(BaseModel):
     pagerank_score: float
     country: Optional[str] = None
     tier: Optional[int] = None
+    propagated_risk_score: float = 0.0  # 0.0 for product nodes; see src.graph.compute_risk_propagation
 
 
 class GraphEdge(BaseModel):
@@ -171,6 +283,7 @@ async def lifespan(app: FastAPI):
         print("[ShockProof API] Database connection verified on startup.")
     except Exception as exc:
         print(f"[ShockProof API] WARNING — could not reach DB on startup: {exc}")
+    _load_ml_model()
     yield
     print("[ShockProof API] Shutdown complete.")
 
@@ -224,6 +337,7 @@ def root() -> dict:
             "kpis":            "/api/kpis",
             "graph":           "/api/graph",
             "health":          "/api/health",
+            "model_info":      "/api/model-info",
         },
     }
 
@@ -270,6 +384,24 @@ def get_suppliers(
                      "priority_quadrant"]],
             on="supplier_id", how="left",
         )
+
+        # Join live ML risk score + network risk propagation score + anomaly flag
+        try:
+            df_enriched = read_table("suppliers_enriched")
+            df_rel = read_table("supply_relationships")
+            df_prod = read_table("products")
+            G = build_dependency_graph(df_rel, df_sup, df_prod)
+            df_ml = _score_live_suppliers(df_sup, df_enriched, df_rel, df_prod, G).reset_index()
+            df = df.merge(df_ml, on="supplier_id", how="left")
+
+            df_anom = compute_anomaly_scores(df_enriched)
+            df = df.merge(df_anom, on="supplier_id", how="left")
+        except Exception as exc:
+            print(f"Warning: ML/propagation/anomaly scoring failed: {exc}")
+            df["ml_risk_score"] = None
+            df["propagated_risk_score"] = None
+            df["anomaly_score"] = None
+            df["is_anomalous"] = None
 
         # Introduce a minor fluctuation to simulate dynamic updates / stochastic variations
         if not df.empty:
@@ -372,6 +504,32 @@ def get_supplier_detail(supplier_id: int) -> dict:
             profile["score_interpretation"] = {}
     else:
         profile["score_interpretation"] = {}
+
+    # Live ML risk score + network risk propagation score + anomaly flag +
+    # SHAP feature attribution, scored across the full current supplier set
+    # so ml_risk_score's min-max normalization is meaningful (same
+    # convention every other risk factor already uses).
+    try:
+        df_enriched = read_table("suppliers_enriched")
+        df_rel = read_table("supply_relationships")
+        df_prod = read_table("products")
+        G = build_dependency_graph(df_rel, df_sup, df_prod)
+        df_ml = _score_live_suppliers(df_sup, df_enriched, df_rel, df_prod, G)
+        if supplier_id in df_ml.index:
+            row = df_ml.loc[supplier_id]
+            profile["resilience_scores"]["ml_risk_score"] = _safe(row["ml_risk_score"])
+            profile["resilience_scores"]["propagated_risk_score"] = _safe(row["propagated_risk_score"])
+            profile["resilience_scores"]["top_risk_factors"] = _explain_supplier(
+                supplier_id, df_sup, df_enriched, df_rel, df_prod, G
+            )
+
+        df_anom = compute_anomaly_scores(df_enriched)
+        anom_row = df_anom[df_anom["supplier_id"] == supplier_id]
+        if not anom_row.empty:
+            profile["resilience_scores"]["anomaly_score"] = _safe(anom_row["anomaly_score"].iloc[0])
+            profile["resilience_scores"]["is_anomalous"] = bool(anom_row["is_anomalous"].iloc[0])
+    except Exception as exc:
+        print(f"Warning: ML/propagation/anomaly/SHAP scoring failed: {exc}")
 
     prio_row = df_prio[df_prio["supplier_id"] == supplier_id]
     if not prio_row.empty:
@@ -786,14 +944,25 @@ def get_graph() -> dict:
 
     pr_map = df_pr.set_index("node_id")["pagerank_score"].to_dict()
 
+    # Network risk propagation score per supplier (0.0 for product nodes)
+    try:
+        df_enriched = read_table("suppliers_enriched")
+        prop_map = _score_live_suppliers(df_sup, df_enriched, df_rel, df_prod, G)["propagated_risk_score"].to_dict()
+    except Exception as exc:
+        print(f"Warning: risk propagation failed: {exc}")
+        prop_map = {}
+
     # Build nodes
     nodes: list[dict] = []
     for node_id, attrs in G.nodes(data=True):
         node_type = attrs.get("type", "unknown")
         if node_type == "supplier":
             name = attrs.get("supplier_name", node_id)
+            supplier_id = int(node_id.split("_", 1)[1])
+            propagated_risk_score = float(prop_map.get(supplier_id, 0.0))
         else:
             name = attrs.get("product_name") or attrs.get("sku") or node_id
+            propagated_risk_score = 0.0
 
         nodes.append(GraphNode(
             node_id=node_id,
@@ -802,6 +971,7 @@ def get_graph() -> dict:
             pagerank_score=float(pr_map.get(node_id, 0.0)),
             country=attrs.get("country") or None,
             tier=int(attrs["tier"]) if attrs.get("tier") is not None else None,
+            propagated_risk_score=propagated_risk_score,
         ).model_dump())
 
     # Build edges
@@ -855,6 +1025,23 @@ def health_check() -> dict:
                 "error": str(exc),
             },
         ) from exc
+
+
+# ── /api/model-info ──────────────────────────────────────────────────────────
+
+@app.get("/api/model-info", tags=["ML"])
+def get_model_info() -> dict:
+    """
+    Metadata about the currently loaded live ML risk model (see
+    evaluation/train_ml_models.py, which trains and benchmarks gbt/mlp/ltr/gnn
+    and persists whichever wins by held-out Spearman correlation).
+
+    Returns `{"loaded": False}` if evaluation/train_ml_models.py hasn't been
+    run yet (or its output isn't on disk), rather than erroring.
+    """
+    if _ml_manifest is None:
+        return {"loaded": False}
+    return {"loaded": True, **_ml_manifest}
 
 
 # ── New Endpoints ───────────────────────────────────────────────────────────
